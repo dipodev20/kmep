@@ -36,9 +36,6 @@ subprojects {
         }
     }
 }
-        }
-    }
-}
 
 val newBuildDir: Directory =
     rootProject.layout.buildDirectory
