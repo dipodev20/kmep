@@ -14,6 +14,46 @@ import 'package:http/http.dart' as http;
 import 'package:kmep_proto/kmep.dart';
 import 'webview_js_runtime.dart';
 
+const _desktopUA =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+    '(KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+
+bool _hasSource(Map<String, dynamic> f) =>
+    f['url'] != null || f['signatureCipher'] != null || f['cipher'] != null;
+
+/// Формат требует вызова player.js (тот же критерий, что в
+/// ExtractionOrchestrator/StreamResolver): cipher ИЛИ прямой url с n.
+bool _needsJs(Map<String, dynamic> f) {
+  if (f['signatureCipher'] != null || f['cipher'] != null) return true;
+  final u = f['url'] as String?;
+  if (u == null) return false;
+  return Uri.parse(u).queryParameters.containsKey('n');
+}
+
+Future<String> _httpGetString(String url) async {
+  final resp = await http
+      .get(Uri.parse(url), headers: const {'User-Agent': _desktopUA})
+      .timeout(const Duration(seconds: 30));
+  if (resp.statusCode != 200) {
+    throw KMEPException(KMEPErrorCode.nsigFail,
+        'GET $url -> HTTP ${resp.statusCode}');
+  }
+  return resp.body;
+}
+
+/// Range-чек готового URL: bytes=0-1023, ждём 206 (или 200).
+Future<String> _rangeStatus(String url) async {
+  try {
+    final resp = await http
+        .get(Uri.parse(url),
+            headers: const {'Range': 'bytes=0-1023', 'User-Agent': _desktopUA})
+        .timeout(const Duration(seconds: 15));
+    return '${resp.statusCode}';
+  } catch (e) {
+    return 'ERR(${e.runtimeType})';
+  }
+}
+
 void main() => runApp(const HarnessApp());
 
 class HarnessApp extends StatelessWidget {
@@ -62,7 +102,11 @@ class _TestScreenState extends State<TestScreen> {
     var allOk = true;
     // Версия сборки харнеса — чтобы лог всегда однозначно идентифицировал,
     // какой именно APK его породил.
-    log('harness v14 (flat call wrapper + marker probe)');
+    log('harness v15 (полный StreamResolver e2e: WEB -> player.js -> '
+        'WebView -> готовые URL всех форматов)');
+
+    // Все созданные JS-рантаймы: в конце прогона освобождаем.
+    final runtimes = <WebViewJsRuntime>[];
 
     // ---------- A. Baseline: ANDROID_VR без JS ----------
     try {
@@ -129,6 +173,7 @@ class _TestScreenState extends State<TestScreen> {
       log('== B. WebViewJsRuntime ==');
       var sw = Stopwatch()..start();
       final runtime = WebViewJsRuntime();
+      runtimes.add(runtime);
       log('B движок создан за ${sw.elapsedMilliseconds} ms');
 
       sw.reset();
@@ -205,6 +250,102 @@ class _TestScreenState extends State<TestScreen> {
     } catch (e, st) {
       allOk = false;
       log('B FAIL: $e\n$st');
+    }
+
+    // ---------- C. Полный StreamResolver e2e ----------
+    // Реальный videoId -> watch-meta (STS + player.js URL) -> WEB InnerTube
+    // -> СКАЧИВАНИЕ player.js по сети -> бутстрап в свежем WebView через
+    // ПРОДАКШЕН-StreamResolver -> resolve ВСЕХ форматов -> Range-чек
+    // каждого готового URL.
+    try {
+      log('== C. Полный StreamResolver e2e ==');
+      const videoId = 'dQw4w9WgXcQ';
+      var sw = Stopwatch()..start();
+
+      // C1. Watch-page метаданные: STS для WEB + URL актуального player.js.
+      final meta = await HttpWatchPageMetaProvider().fetch(videoId);
+      final sts = meta?.signatureTimestamp;
+      final jsUrl = meta?.playerJsUrl;
+      if (jsUrl == null || jsUrl.isEmpty) {
+        throw const KMEPException(
+            KMEPErrorCode.nsigFail, 'C1: watch-страница не дала playerJsUrl');
+      }
+      log('C1[${sw.elapsedMilliseconds} ms] meta: STS=$sts '
+          'player.js=${Uri.parse(jsUrl).path}');
+
+      // C2. Реальный InnerTubeClient (WEB): сырые форматы с cipher/n.
+      sw.reset();
+      final web = InnerTubeClient(ClientRegistry.resolved('WEB'));
+      final raw = await web.fetchPlayer(videoId, signatureTimestamp: sts);
+      final webStatus =
+          (raw['playabilityStatus']?['status'] ?? '?').toString();
+      var formats = PlayerParser.rawFormats(raw);
+      var srcName = 'WEB';
+      if (webStatus != 'OK' || !formats.any(_hasSource)) {
+        // Фолбэк источника форматов: ANDROID_VR (прямые url, часть с n).
+        log('C2 WEB status=$webStatus url-источников='
+            '${formats.where(_hasSource).length} -> фолбэк ANDROID_VR');
+        sw.reset();
+        final vr = InnerTubeClient(ClientRegistry.resolved('ANDROID_VR'));
+        final vraw = await vr.fetchPlayer(videoId);
+        final vstatus =
+            (vraw['playabilityStatus']?['status'] ?? '?').toString();
+        formats = PlayerParser.rawFormats(vraw);
+        srcName = 'ANDROID_VR($vstatus)';
+      }
+      log('C2[${sw.elapsedMilliseconds} ms] источник=$srcName: '
+          'форматов=${formats.length} с-url=${formats.where(_hasSource).length} '
+          'требуют-playerJs=${formats.where(_needsJs).length}');
+      if (!formats.any(_hasSource)) {
+        throw const KMEPException(KMEPErrorCode.partial,
+            'C2: ни одного формата с url/signatureCipher');
+      }
+
+      // C3. Продакшен-StreamResolver на свежем WebViewJsRuntime:
+      // fetchPlayerJs качает player.js ПО СЕТИ, bootstrapParts гоняет
+      // shim+player+discovery через WebView (тот же код, что в проде).
+      sw.reset();
+      final runtimeC = WebViewJsRuntime();
+      runtimes.add(runtimeC);
+      var playerJsSize = 0;
+      final resolver = StreamResolver(
+        jsRuntime: runtimeC,
+        fetchPlayerJs: (url) async {
+          final body = await _httpGetString(url);
+          playerJsSize = body.length;
+          return body;
+        },
+      );
+      final streams = await resolver.resolve(formats, playerJsUrl: jsUrl);
+      final env = await runtimeC.envSnapshot();
+      log('C3[${sw.elapsedMilliseconds} ms] player.js=$playerJsSize байт; '
+          'fns=${env['fns']} fn="${env['fnName']}"; '
+          'resolve: вход ${formats.length} -> готово ${streams.length}');
+
+      // C4. Range-чек КАЖДОГО готового URL: корректный n-transform даёт
+      // 206/200 от CDN, битый — 403.
+      sw.reset();
+      var okCount = 0;
+      for (final s in streams) {
+        final st = await _rangeStatus(s.url);
+        if (st.startsWith('2')) okCount++;
+        log('  itag=${s.itag} ${s.type}'
+            '${s.height != null ? " ${s.height}p" : ""} '
+            '${s.mimeType.split(";").first}: HTTP $st');
+      }
+      final pass = streams.isNotEmpty && okCount * 5 >= streams.length * 4;
+      if (!pass) allOk = false;
+      log('C4[${sw.elapsedMilliseconds} ms] Range-чек всех URL: '
+          '2xx=$okCount/${streams.length} -> ${pass ? "PASS" : "FAIL"}');
+    } catch (e, st) {
+      allOk = false;
+      log('C FAIL: $e\n$st');
+    }
+
+    for (final r in runtimes) {
+      try {
+        r.dispose();
+      } catch (_) {}
     }
 
     setState(() {
