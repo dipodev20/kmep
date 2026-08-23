@@ -8,15 +8,34 @@ allprojects {
     }
 }
 
-// Единый JVM-таргет для всех модулей: flutter_js применяет свой KGP с
-// kotlinOptions 1.8, тогда как Java-таски (AGP 8.x) идут на 11 — KGP
-// роняет сборку на проверке консистентности. Поднимаем Kotlin до 11.
+// Выравнивание JVM-таргета Kotlin под Java КАЖДОГО модуля: flutter_js и
+// прочие плагины задают свои kotlinOptions (1.8), а AGP-модули имеют разные
+// java-таргеты (11/17) — KGP роняет сборку на проверке консистентности.
+// Читаем compileOptions.targetCompatibility модуля рефлексией (AGP-типы
+// недоступны в корневом класспасе) и ставим Kotlin туда же.
+fun Project.androidJavaTargetCompatibility(): String? = runCatching {
+    val androidExt = extensions.findByName("android") ?: return@runCatching null
+    val getCompileOptions = androidExt.javaClass.methods
+        .firstOrNull { it.name == "getCompileOptions" } ?: return@runCatching null
+    val opts = getCompileOptions.invoke(androidExt)
+    val getTarget = opts.javaClass.methods
+        .firstOrNull { it.name == "getTargetCompatibility" } ?: return@runCatching null
+    val value = getTarget.invoke(opts)?.toString() ?: return@runCatching null
+    value.substringAfterLast('.').removePrefix("JAVA_") // e.g. "11", "17"
+}.getOrNull()
+
 subprojects {
     afterEvaluate {
         plugins.withId("org.jetbrains.kotlin.android") {
-            tasks.withType<KotlinCompile>().configureEach {
-                compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
+            val target = androidJavaTargetCompatibility()
+            if (target != null) {
+                tasks.withType<KotlinCompile>().configureEach {
+                    compilerOptions.jvmTarget.set(JvmTarget.fromTarget(target))
+                }
             }
+        }
+    }
+}
         }
     }
 }
