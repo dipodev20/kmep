@@ -1,3 +1,12 @@
+> **СТАТУС 2026-08-23, вечер:** харнес v15 — этап C (полный
+> StreamResolver e2e на устройстве) НАПИСАН и готов к прогону на телефоне.
+> Логика этапа отрепетирована на десктопе (Node-рантайм): watch-meta ->
+> WEB InnerTube -> player.js по сети -> прод-резолвер -> resolve -> Range:
+> WEB отдал 27 форматов (26 SABR + itag18 cipher), resolve дал 1/1,
+> HTTP 206 PASS. На устройстве ожидаем тот же поток через WebViewJsRuntime.
+> APK v15: push в main -> артефакт `kmep-proto-harness-apk` (локальный
+> пуш из среды агента невозможен — нет кредов).
+>
 > **СТАТУС 2026-08-23, день:** on-device smoke test ВЫПОЛНЕН ДО КОНЦА.
 > Итог: **A-baseline PASS на телефоне** (ANDROID_VR, 27 форматов, 2160p,
 > HTTP 200 — InnerTube+парсер полностью рабочие на устройстве).
@@ -190,6 +199,33 @@ On-device харнес (kmep_proto_harness, APK через CI
 Следующий шаг: перенести WebViewJsRuntime из харнеса в прод-приложение
 (flutter_inappwebview уже совместим по AGP 8.7.3+), заменив
 FlutterJsRuntime (QuickJS падает на player.js: "unconsistent stack size").
+
+### Харнес v15: этап C — полный StreamResolver e2e (готов к прогону, 2026-08-23)
+
+Коммит `9305906`, kmep_proto_harness/lib/main.dart. После A (baseline) и
+B (n-тест на ассете) добавлена стадия C — ровно запрошенный e2e:
+
+- **C1**: `HttpWatchPageMetaProvider` -> STS + URL актуального player.js.
+- **C2**: реальный `InnerTubeClient(WEB)` c STS -> сырые форматы. Если WEB
+  не ОК/без url-форматов — фолбэк источника на ANDROID_VR (прямые url с n,
+  резолвер гоняет их через пустые sp/s).
+- **C3**: ПРОДАКШЕН-`StreamResolver` на СВЕЖЕМ `WebViewJsRuntime`:
+  fetchPlayerJs качает player.js ПО СЕТИ (~2.5 МБ), bootstrapParts гонит
+  shim+player+discovery через WebView, resolve() обрабатывает ВСЕ форматы.
+  Логируются размер player.js, fns/fnName из envSnapshot, вход->выход.
+- **C4**: Range-чек bytes=0-1023 КАЖДОГО готового URL; PASS = streams>0 и
+  доля 2xx >= 80% (корректный n даёт 206, битый — 403).
+- Рантаймы B и C теперь dispose'ятся в конце прогона (раньше текли при
+  повторных нажатиях кнопки).
+
+Десктопная репетиция того же потока (NodeProcessJsRuntime, tool-скрипт
+жил временно, удалён): C1 STS=20683, C2 WEB OK 27 форматов (26 SABR + itag18
+signatureCipher), C3 player.js=2567494 resolve 27->1, C4 HTTP 206 PASS.
+Ожидание на устройстве: тот же поток через WebView; SABR-only у WEB — норма.
+
+ВАЖНО для владельца: из среды агента нет кредов GitHub (`gh` отсутствует) —
+APK v15 собирается после ПУША владельца в main (workflow
+build_harness_apk.yml, артефакт kmep-proto-harness-apk).
 
 ### Прогресс по шагам (обновлено 2026-08-23, ночная сессия — ПОЧТИ ВСЁ ЗАКРЫТО)
 
@@ -468,7 +504,65 @@ XOR-обфусцированными индексами (`m[h^8856]` и т.п.) 
    (`buildNsigCallExpression`) как рабочее выражение вида
    `(n) => '_yt_player.НАЙДЕННОЕ_ИМЯ("$n")'`.
 
+## ОТДЕЛЬНОЕ ИССЛЕДОВАНИЕ: on-device POT/BotGuard без сервера bgutil
+
+Параллельная ветка, прод-код НЕ трогает. Вопрос: можно ли генерировать
+PO-token (BotGuard challenge -> integrity token -> минтинг) целиком на
+устройстве через WebViewJsRuntime, без стороннего bgutil-сервера.
+Эксперименты живут в `/tmp/opencode/pot_research/` (в репо попадут только
+после ревью и рабочего плана).
+
+### Разбор референса: bgutil 1.3.2 + bgutils-js 4.0.3 (session_manager.ts)
+
+Полный пайплайн из 5 шагов (все HTTP — обычные запросы, JS нужен только
+для шагов 2/3/5):
+
+1. **Челлендж — только с главной страницы.** GET `https://www.youtube.com/`
+   -> из HTML достаём `ytcfg.set({...})` (кладём как `yt.config_` — VM читает
+   `yt.config_.EVENT_ID`) и вызов `window.ytAtN({...})` -> `.R.bgChallenge`
+   = `{program, globalName, interpreterUrl.privateDoNotAccessOrElse...
+   WrappedValue, interpreterHash}`.
+   **ВАЖНО (патч unstem 2026-08 прямо в нашем клоне bgutil):** челленджи с
+   `/youtubei/v1/att/get` теперь ОТКЛОНЯЮТСЯ — рабочий источник только
+   главная страница (`getChallengeFromHomepage` приоритетнее, `/att/get`
+   оставлен как легаси-фолбэк). Для on-device это УДОБНО: watch/homepage
+   страницы мы и так умеем качать, отдельного att/get не нужно.
+2. **Интерпретатор VM**: скачать `https:` + interpreterUrl (gstatic,
+   boq-botguard-sfs скрипт), выполнить в контексте с DOM-шимом; ПЕРЕД этим
+   в глобал кладётся `yt = {config_: <ytcfg>}` (+ то же на window).
+3. **Snapshot**: `globalObject[globalName].a(program, setupCb, true,
+   undefined, telemetryCb, [[],[]], undefined, false, loggerFns)` ->
+   массив, `[0]` = СИНХРОННАЯ snapshot-функция; вызов
+   `fn([contentBinding, undefined, webPoSignalOutput=[], undefined])->
+   botguardResponse` (строка). Есть и асинхронный путь через setupCb
+   (Promise + setTimeout, дефолтный таймаут 3000 мс).
+4. **Integrity token**: POST
+   `https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT`,
+   заголовки: `content-type: application/json+protobuf`,
+   `x-goog-api-key: AIzaSyDyT5W0Jh49F30Pqqtyfdf7pDLFKLJoAnw`,
+   `x-user-agent: grpc-web-javascript/0.1`; тело `[REQUEST_KEY,
+   botguardResponse]`, REQUEST_KEY=`O43z0dpjhgX20SCx4KAo`. Ответ — массив
+   `[integrityToken, estimatedTtlSecs, mintRefreshThreshold,
+   websafeFallbackToken]`.
+5. **Минтинг**: `getMinter = webPoSignalOutput[0]` — это ФУНКЦИЯ, которую
+   выдаёт сама VM во время snapshot; `mintCallback = await
+   getMinter(base64ToU8(integrityToken))`; `poToken = base64url(await
+   mintCallback(new TextEncoder().encode(contentBinding)))`.
+   ВСЯ криптография — внутри интерпретатора VM; bgutils-js не использует
+   crypto.subtle вовсе: только atob/btoa, TextEncoder, Promise, setTimeout.
+
+Промежуточный вывод по зависимостям: всё нужное JS-стороне есть в WebView
+из коробки (настоящие window/document/navigator c origin youtube.com —
+даже точнее jsdom, под которым гоняет bgutil). Единственная архитектурная
+дыра — АСИНХРОННОСТЬ: WebViewJsRuntime.call() синхронный, для шагов 3/5
+нужен мост «запустить в globalThis -> поллинг статуса повторными call()».
+Плюс найден бонус: `createColdStartToken()` в bgutils-js — чистый JS без
+VM/integrity token (работает пока sps==2) — кандидат в аварийный фолбэк.
+
+(Продолжение по мере экспериментов — см. ниже.)
+
 ## Общие правила работы в этом репо
+
 
 - `dart/pubspec.yaml` должен оставаться БЕЗ Flutter-зависимостей — весь
   пакет должен собираться голым `dart pub get`/`dart test` без Flutter SDK.
