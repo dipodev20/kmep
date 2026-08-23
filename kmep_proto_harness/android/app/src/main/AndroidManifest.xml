@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- InnerTube-запросы (baseline-тест) — без этого DNS не резолвится
+         в release-сборке ("Failed host lookup", поймано на устройстве). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="kmep_proto_harness"
         android:name="${applicationName}"
