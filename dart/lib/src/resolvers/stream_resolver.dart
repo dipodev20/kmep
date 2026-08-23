@@ -253,18 +253,20 @@ const String discoverResolveFnScript = r'''
     var src;
     try { src = Function.prototype.toString.call(fns[k]); } catch (e) { continue; }
     if (src.indexOf('"alr"') === -1 || src.indexOf('"yes"') === -1) continue;
-    (src.indexOf('new g.iO(') !== -1 ? preferred : others).push(fns[k]);
+    (src.indexOf('new g.iO(') !== -1 ? preferred : others).push([k, fns[k]]);
   }
   globalThis.__kmepResolveFn = null;
+  globalThis.__kmepResolveFnName = null;
   var pool = preferred.concat(others);
   for (var i = 0; i < pool.length; i++) {
     try {
-      var obj = pool[i](dummy, '', '');
+      var obj = pool[i][1](dummy, '', '');
       if (!obj || typeof obj.KW !== 'function') continue;
       var out = String(obj.KW());
       if (out.indexOf('alr=yes') === -1) continue;
       if (out.indexOf('n=ABCDEFGHIJKLMNOP') !== -1) continue;
-      globalThis.__kmepResolveFn = pool[i];
+      globalThis.__kmepResolveFn = pool[i][1];
+      globalThis.__kmepResolveFnName = pool[i][0];
       break;
     } catch (e) {}
   }

@@ -62,7 +62,7 @@ class _TestScreenState extends State<TestScreen> {
     var allOk = true;
     // Версия сборки харнеса — чтобы лог всегда однозначно идентифицировал,
     // какой именно APK его породил.
-    log('harness v10 (WebViewJsRuntime)');
+    log('harness v11 (webview+fn diagnostics)');
 
     // ---------- A. Baseline: ANDROID_VR без JS ----------
     try {
@@ -162,9 +162,25 @@ class _TestScreenState extends State<TestScreen> {
       );
       log('B call(ji+KW): ${sw.elapsedMilliseconds} ms');
 
+      // Диагностика: какая функция выбрана и что в итоговом URL.
+      final fnName = await runtime.call(
+          'String(globalThis.__kmepResolveFnName || "?")');
+      log('B выбранная функция: $fnName');
+      final probe = await runtime.call(
+        'globalThis.__kmepProbe=(function(){'
+        'var f=globalThis.__kmepResolveFn;'
+        'var o=f(${jsonEncode(inputUrl)},"","");'
+        'return JSON.stringify({'
+        'getN:String(o.get("n")),'
+        'kwHasAlr:String(o.KW()).indexOf("alr=yes")!==-1,'
+        'kwLen:String(o.KW()).length})})()',
+      );
+      log('B probe(get(n) до KW): $probe');
+
       final outN = Uri.parse(outUrl.trim()).queryParameters['n'] ?? '';
       final pass = outN == expectedN;
       if (!pass) allOk = false;
+      log('B outUrl(${outUrl.length}): ${outUrl.substring(0, outUrl.length > 140 ? 140 : outUrl.length)}');
       log('B n: "$inputN" -> "$outN" (эталон "$expectedN") '
           '-> ${pass ? "PASS" : "FAIL"}');
     } catch (e, st) {
