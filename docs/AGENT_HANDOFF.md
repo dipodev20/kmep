@@ -1,3 +1,13 @@
+> **СТАТУС 2026-08-23, ночь:** kmep_proto ВНЕДРЁН в прод-приложение
+> Vidora как «Vidora Extractor (Beta)» (репо ~/vidora, коммит 7914760).
+> Архитектура: Kotlin VidoraExtractorBridge хостит СИСТЕМНЫЙ WebView
+> (origin youtube.com) и релеит getStream/search/ping в Dart-сервис
+> KmepExtractorService с полным ExtractionOrchestrator. flutter_inappwebview
+> НЕ использован: несовместим с AGP 9.0.1 приложения (харнес это уже
+> ловил). Комментарии — NOT_SUPPORTED (в kmep_proto их нет), маршрутизация
+> движков — за отдельной сессией. Проверено локально: flutter analyze
+> чист, 11 тестов маппинга passed; на устройстве ещё НЕ гонялось.
+>
 > **СТАТУС 2026-08-23, вечер (v15 прогон):** ЭТАП C ЗАКРЫТ — полный
 > StreamResolver e2e на телефоне **PASS**. A/B/C все зелёные:
 > A) ANDROID_VR 27 форматов 2160p; B) n-тест на ассете == эталон;
@@ -611,3 +621,52 @@ VM/integrity token (работает пока sps==2) — кандидат в а
   (публичные InnerTube-константы), в отличие от твоих собственных ключей
   (Google OAuth, GitHub-токены и т.п. из других задач) — те никогда не
   клади в код или коммиты.
+
+## Интеграция в Vidora: «Vidora Extractor (Beta)» (2026-08-23, ночь)
+
+Репо ~/vidora (отдельный Flutter-проект), коммит 7914760 в main.
+Задача: реализовать заглушку VidoraExtractorBridge.kt на kmep_proto +
+WebViewJsRuntime; формат ответов = VideoExtractor.kt (NewPipe), чтобы
+переключатель движка не требовал правок вызывающего кода.
+
+### Архитектура (почему так)
+
+  UI ──(vidora_extractor)──> VidoraExtractorBridge.kt
+       │ релей+валидация+таймауты          │ хост android.webkit.WebView
+       ▼                                   ▲ eval (loadBaseURL youtube.com)
+  KmepExtractorService.dart ──(vidora_extractor_web)
+  └ ExtractionOrchestrator + WebBridgeJsRuntime (порт логики харнеса)
+
+- **flutter_inappwebview НЕ подключён**: у Vidora AGP 9.0.1, а inappwebview
+  6.1.5 с ним несовместим (харнес это ловил и откатывался на AGP 8.7.3).
+  Вместо плагина — нативный WebView в бридже: тот же системный движок,
+  что прошёл e2e v15.
+- Каналы: vidora_extractor (UI->Kt, контракт без изменений),
+  vidora_extractor_dart (Kt->Dart релей), vidora_extractor_web (Dart->Kt
+  eval). attach() перепривязывает мессенджеры при пересоздании движка.
+- WebView/player.js — ЛЕНИВО: дефолтный приоритет RemoteConfig начинается
+  с ANDROID_VR (прямые URL), бутстрап 2.5 МБ происходит только если
+  клиент отдал cipher/n-форматы.
+- Таймауты релея: ping 15 c, search/comments 45/15 c, getStream 120 c
+  (холодный прогрев). Ошибки маппятся в коды EXTRACT_FAILED /
+  SEARCH_FAILED / COMMENTS_FAILED / BAD_ARGS / TIMEOUT — как у
+  VideoExtractor-обработчика в MainActivity.
+- getComments -> NOT_SUPPORTED: комментариев в kmep_proto нет; маршруту
+  следует откатываться на NewPipe.
+- Маппинг VideoInfo -> native: videoStreams {url,resolution "1080p",
+  format MPEG_4|WEBM}, audioStreams {url,bitrate,format M4A|WEBMA_OPUS|
+  WEBMA} — ровно те строки, что ждёт StreamQuality.bestMp4Audio/
+  bestAudioForVideoFormat для MediaMuxer-склейки.
+- Поиск: InnerTubeClient.fetchSearch(WEB) + рекурсивный сбор
+  videoRenderer/gridVideoRenderer/reelItemRenderer, дедуп по videoId,
+  cap 40.
+
+### Проверено / НЕ проверено
+
+- flutter analyze проекта Vidora — чисто по моим файлам; flutter test —
+  11 passed (маппинг форматов, парс поиска, дедуп, безопасные дефолты).
+- НЕ проверено на устройстве (нет Android SDK в среде агента): реальный
+  вызов getStream/search через переключённый движок, поведение системного
+  WebView при пересоздании Activity. Первый пункт проверки после сборки.
+- Маршрутизация движков (ExtractionEngineService -> кому идти) — сознательно
+  НЕ тронута, отдельная сессия.
