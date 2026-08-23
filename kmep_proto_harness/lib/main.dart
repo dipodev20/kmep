@@ -60,6 +60,9 @@ class _TestScreenState extends State<TestScreen> {
     });
 
     var allOk = true;
+    // Версия сборки харнеса — чтобы лог всегда однозначно идентифицировал,
+    // какой именно APK его породил.
+    log('harness v6 (bootstrapParts, stackSize 32MB)');
 
     // ---------- A. Baseline: ANDROID_VR без JS ----------
     try {
