@@ -62,7 +62,7 @@ class _TestScreenState extends State<TestScreen> {
     var allOk = true;
     // Версия сборки харнеса — чтобы лог всегда однозначно идентифицировал,
     // какой именно APK его породил.
-    log('harness v12 (webview bridge diagnostics)');
+    log('harness v13 (echo-fix + loud empty call)');
 
     // ---------- A. Baseline: ANDROID_VR без JS ----------
     try {

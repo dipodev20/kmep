@@ -157,12 +157,13 @@ class WebViewJsRuntime implements JsRuntime {
       throw KMEPException(
           KMEPErrorCode.nsigFail, 'envSnapshot упал: ${decoded['err']}');
     }
-    // echo !== '7' означает: выражение выполнилось, но вернулось НЕ то,
+    // echo !== '42' означает: выражение выполнилось, но вернулось НЕ то,
     // что посчитали внутри WebView — мост искажает результат.
-    if (decoded['echo'] != '7') {
+    // (v12 падал здесь по ошибке диагностики: ждали '7' от String(6*7).)
+    if (decoded['echo'] != '42') {
       throw KMEPException(
         KMEPErrorCode.nsigFail,
-        'мост искажает результаты (echo=${decoded['echo']} вместо 7); '
+        'мост искажает результаты (echo=${decoded['echo']} вместо 42); '
             'сырой ответ: $repr',
       );
     }
@@ -194,7 +195,9 @@ class WebViewJsRuntime implements JsRuntime {
   Future<String> call(String expression) async {
     final src = '(function(){'
         'try{ var r=(function(){${expression}})(); '
-        'return JSON.stringify({ok:true,v:String(r===undefined?"":r)}); }'
+        'return JSON.stringify({ok:true,'
+        'v:String(r===undefined?"":r),'
+        't:r===null?"null":typeof r}); }'
         'catch(e){ return JSON.stringify({ok:false, '
         'err:String(e&&(e.stack||e.message)||e)}); }'
         '})()';
@@ -204,7 +207,18 @@ class WebViewJsRuntime implements JsRuntime {
       throw KMEPException(
           KMEPErrorCode.nsigFail, 'JS-вызов упал: ${decoded['err']}');
     }
-    return decoded['v'] as String? ?? '';
+    final v = decoded['v'] as String? ?? '';
+    // Пустая строка — почти всегда аномалия (undefined/тихий провал),
+    // а не легитимный результат: в v11 такие ответы молча проходили и
+    // маскировали поломку. Делаем громко, с типом и сырым ответом моста.
+    if (v.isEmpty) {
+      throw KMEPException(
+        KMEPErrorCode.nsigFail,
+        'JS-вызов вернул пустую строку (typeof=${decoded['t']}, '
+            'raw=${raw.runtimeType}), сырой ответ моста: $repr',
+      );
+    }
+    return v;
   }
 
   void dispose() {
