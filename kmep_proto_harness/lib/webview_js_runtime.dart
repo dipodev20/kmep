@@ -193,8 +193,13 @@ class WebViewJsRuntime implements JsRuntime {
 
   @override
   Future<String> call(String expression) async {
+    // Плоская обёртка: выражение подставляется КАК ЕСТЬ в var r=(...),
+    // без дополнительной вложенной IIFE вокруг него. Вложенная форма
+    // (v11-v13) давала на устройстве r=undefined без исключения даже для
+    // кода с безусловным return — подозрение на обработку глубокой
+    // вложенности скобок в evaluateJavascript.
     final src = '(function(){'
-        'try{ var r=(function(){${expression}})(); '
+        'try{ var r=(${expression}); '
         'return JSON.stringify({ok:true,'
         'v:String(r===undefined?"":r),'
         't:r===null?"null":typeof r}); }'
@@ -208,14 +213,23 @@ class WebViewJsRuntime implements JsRuntime {
           KMEPErrorCode.nsigFail, 'JS-вызов упал: ${decoded['err']}');
     }
     final v = decoded['v'] as String? ?? '';
-    // Пустая строка — почти всегда аномалия (undefined/тихий провал),
-    // а не легитимный результат: в v11 такие ответы молча проходили и
-    // маскировали поломку. Делаем громко, с типом и сырым ответом моста.
+    // Пустая строка — аномалия (в v11-v13 такие ответы молча маскировали
+    // поломку). Читаем назад globalThis-переменную, которую выражение
+    // должно было присвоить (__kmepOut/__kmepProbe/__kmepMarker): если она
+    // УСТАНОВЛЕНА — присваивание внутри WebView произошло, а сломан именно
+    // путь возврата значения.
     if (v.isEmpty) {
+      String assigned;
+      try {
+        assigned =
+            await call('String(JSON.stringify(globalThis.__kmepOut||null))');
+      } catch (_) {
+        assigned = '<readback упал>';
+      }
       throw KMEPException(
         KMEPErrorCode.nsigFail,
-        'JS-вызов вернул пустую строку (typeof=${decoded['t']}, '
-            'raw=${raw.runtimeType}), сырой ответ моста: $repr',
+        'JS-вызов вернул пустую строку (typeof=${decoded['t']}); '
+            '__kmepOut=$assigned; сырой ответ моста: $repr',
       );
     }
     return v;

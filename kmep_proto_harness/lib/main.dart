@@ -62,7 +62,7 @@ class _TestScreenState extends State<TestScreen> {
     var allOk = true;
     // Версия сборки харнеса — чтобы лог всегда однозначно идентифицировал,
     // какой именно APK его породил.
-    log('harness v13 (echo-fix + loud empty call)');
+    log('harness v14 (flat call wrapper + marker probe)');
 
     // ---------- A. Baseline: ANDROID_VR без JS ----------
     try {
@@ -164,6 +164,14 @@ class _TestScreenState extends State<TestScreen> {
           '?expire=1799999999&id=TESTTESTTEST&n=$inputN&ratebypass=yes';
 
       sw.reset();
+      // Маркер: та же форма (присваивание globalThis + IIFE + return
+      // строки), но без вызова плеерного кода. Отличает «сломана
+      // механика вызова» от «ломается внутри ji/KW».
+      final marker = await runtime.call(
+        'globalThis.__kmepMarker=(function(){return "MARKER42"})()',
+      );
+      log('B маркер: $marker');
+
       final outUrl = await runtime.call(
         'globalThis.__kmepOut=(function(){'
         'var f=globalThis.__kmepResolveFn;'
