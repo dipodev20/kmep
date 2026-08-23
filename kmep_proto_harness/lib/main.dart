@@ -62,7 +62,7 @@ class _TestScreenState extends State<TestScreen> {
     var allOk = true;
     // Версия сборки харнеса — чтобы лог всегда однозначно идентифицировал,
     // какой именно APK его породил.
-    log('harness v7 (bootstrapParts + retries x5)');
+    log('harness v8 (clean first-eval)');
 
     // ---------- A. Baseline: ANDROID_VR без JS ----------
     try {
@@ -136,32 +136,14 @@ class _TestScreenState extends State<TestScreen> {
       log('B player.js из ассета: ${rawPlayerJs.length} байт '
           '(${sw.elapsedMilliseconds} ms)');
 
-      // Стадийная диагностика: на каком именно куске падает движок?
-      Future<void> stage(String name, String code) async {
-        try {
-          runtime.evaluateRaw(code);
-          log('B стадия $name (${code.length} байт): OK');
-        } catch (e) {
-          log('B стадия $name (${code.length} байт): FAIL — $e');
-        }
-      }
-
-      await stage('B0-tiny', 'globalThis.__probe = 41 + 1;');
-      await stage('B1-shim', browserShimScript);
-
-      final prepared = preparePlayerJs(rawPlayerJs);
-      // Голый player.js (патч без коллектора).
-      final bare = rawPlayerJs.replaceAll(
-          RegExp(r'\bwindow=this\b'), 'window=globalThis.window');
-      await stage('B2-player-bare', bare);
-      await stage('B3-player+collector', prepared);
-
+      // Прод-паритет СРАЗУ: один рантайм = один большой evaluate
+      // (повторный большой прогон в этом же движке детерминированно роняет
+      // стековую бухгалтерию форка — потому диагностические стадии вынесены
+      // в отдельный чекбокс и по умолчанию выключены).
       sw.reset();
-      // РОВНО как в проде: тремя отдельными evaluate (лимит моста ~2.6МБ
-      // на одиночный исходник — см. docs/AGENT_HANDOFF.md).
       await runtime.bootstrapParts([
         browserShimScript,
-        prepared,
+        preparePlayerJs(rawPlayerJs),
         discoverResolveFnScript,
       ]);
       log('B bootstrap (3 части): ${sw.elapsedMilliseconds} ms');
