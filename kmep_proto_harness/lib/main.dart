@@ -110,7 +110,7 @@ class _TestScreenState extends State<TestScreen> {
       });
       final ok = status == 'OK' && direct > 0;
       if (!ok) allOk = false;
-      log('A[$sw.elapsedMilliseconds ms] HTTP ${resp.statusCode}: '
+      log('A[${sw.elapsedMilliseconds} ms] HTTP ${resp.statusCode}: '
           'status=$status форматов=${formats.length} прямых=$direct maxH=$maxH '
           '-> ${ok ? "PASS" : "FAIL"}');
       if (!ok) {
@@ -133,9 +133,30 @@ class _TestScreenState extends State<TestScreen> {
       log('B player.js из ассета: ${rawPlayerJs.length} байт '
           '(${sw.elapsedMilliseconds} ms)');
 
+      // Стадийная диагностика: на каком именно куске падает движок?
+      Future<void> stage(String name, String code) async {
+        try {
+          runtime.evaluateRaw(code);
+          log('B стадия $name (${code.length} байт): OK');
+        } catch (e) {
+          log('B стадия $name (${code.length} байт): FAIL — $e');
+        }
+      }
+
+      await stage('B0-tiny', 'globalThis.__probe = 41 + 1;');
+      await stage('B1-shim', browserShimScript);
+
+      final prepared = preparePlayerJs(rawPlayerJs);
+      // Голый player.js (патч без коллектора).
+      final bare = rawPlayerJs.replaceAll(
+          RegExp(r'\bwindow=this\b'), 'window=globalThis.window');
+      await stage('B2-player-bare', bare);
+      await stage('B3-player+collector', prepared);
+
       sw.reset();
-      await runtime.bootstrap(buildBootstrapScript(rawPlayerJs));
-      log('B bootstrap: ${sw.elapsedMilliseconds} ms');
+      await runtime.bootstrap(
+          '$browserShimScript\n$prepared\n$discoverResolveFnScript');
+      log('B bootstrap полный: ${sw.elapsedMilliseconds} ms');
 
       // Эталон получен на ПК через Node (verify_prod_pipeline.js) на ЭТОЙ
       // версии плеера; вход синтетический — трансформатор работает с n.
