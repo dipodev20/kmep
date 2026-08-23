@@ -1,0 +1,17 @@
+# On-device smoke test для FlutterJsRuntime (kmep-proto).
+# НЕ прод-приложение: одна кнопка + лог на экране.
+name: kmep_proto_harness
+publish_to: none
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  flutter_js: ^0.8.3
+  kmep_proto:
+    path: ../dart
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/player_dump.js

@@ -1,0 +1,23 @@
+name: kmep_proto
+description: >
+  ВНУТРЕННИЙ прототип ("kmep-proto") для Vidora — проверка архитектуры
+  будущего публичного KMEP на реальном трафике перед переносом на
+  Kotlin Multiplatform. Не публиковать как "KMEP" — это разные проекты
+  с разным API. В настройках Vidora отображается как "Vidora Extractor (Beta)".
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  http: ^1.2.0
+  # flutter_js убран отсюда: этот пакет должен оставаться чистым Dart
+  # (dart pub get / dart test / diagnostic tool должны работать без Flutter
+  # SDK). Конкретная реализация JsRuntime на flutter_js — в
+  # flutter_integration/, подключается на шаге интеграции в само
+  # Flutter-приложение Vidora, где Flutter SDK уже есть.
+
+dev_dependencies:
+  test: ^1.24.0
+  lints: ^3.0.0

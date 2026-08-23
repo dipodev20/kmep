@@ -1,0 +1,17 @@
+# Flutter-обвязка kmep-proto: JsRuntime поверх flutter_js для мобильных.
+# НЕ часть чистого Dart-пакета (dart/) — требует Flutter SDK.
+#
+#   flutter pub get && flutter test
+name: kmep_flutter_integration
+publish_to: none
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_js: ^0.8.3
+  kmep_proto:
+    path: ../dart
+dev_dependencies:
+  flutter_test:
+    sdk: flutter

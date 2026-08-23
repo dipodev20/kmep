@@ -1,0 +1,12 @@
+.dart_tool/
+build/
+.gradle/
+local.properties
+*.iml
+.idea/
+node_modules/
+__pycache__/
+*.log
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
