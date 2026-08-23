@@ -154,9 +154,14 @@ class _TestScreenState extends State<TestScreen> {
       await stage('B3-player+collector', prepared);
 
       sw.reset();
-      await runtime.bootstrap(
-          '$browserShimScript\n$prepared\n$discoverResolveFnScript');
-      log('B bootstrap полный: ${sw.elapsedMilliseconds} ms');
+      // РОВНО как в проде: тремя отдельными evaluate (лимит моста ~2.6МБ
+      // на одиночный исходник — см. docs/AGENT_HANDOFF.md).
+      await runtime.bootstrapParts([
+        browserShimScript,
+        prepared,
+        discoverResolveFnScript,
+      ]);
+      log('B bootstrap (3 части): ${sw.elapsedMilliseconds} ms');
 
       // Эталон получен на ПК через Node (verify_prod_pipeline.js) на ЭТОЙ
       // версии плеера; вход синтетический — трансформатор работает с n.
