@@ -55,12 +55,31 @@ class FlutterJsRuntime implements JsRuntime {
   @override
   Future<void> bootstrapParts(List<String> parts) async {
     for (var i = 0; i < parts.length; i++) {
-      final result = _js.evaluate(parts[i]);
-      if (result.isError) {
+      // Мост flutter_js выполняет JS на отдельном потоке и его стековая
+      // бухгалтерия НЕДЕТЕРМИНИРОВАННА: один и тот же исходник проходит
+      // через раз ("unconsistent stack size", стабильно pc=2895 на
+      // player.js). Ретраи решают: отказы независимы между прогонами
+      // (стадия B3 проходила непосредственно перед падавшей частью).
+      const maxAttempts = 5;
+      Object? lastErr;
+      for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          final result = _js.evaluate(parts[i]);
+          if (!result.isError) {
+            lastErr = null;
+            break;
+          }
+          lastErr = result.stringResult;
+        } catch (e) {
+          lastErr = e;
+        }
+        await Future<void>.delayed(Duration(milliseconds: 60 * attempt));
+      }
+      if (lastErr != null) {
         throw KMEPException(
           KMEPErrorCode.nsigFail,
-          'bootstrap player.js упал (часть ${i + 1}/${parts.length}): '
-          '${result.stringResult}',
+          'bootstrap player.js упал (часть ${i + 1}/${parts.length}, '
+          '$maxAttempts попыток): $lastErr',
         );
       }
     }
