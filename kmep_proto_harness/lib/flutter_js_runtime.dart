@@ -27,17 +27,17 @@ class FlutterJsRuntime implements JsRuntime {
   /// Инъекция движка для тестов; в проде используется платформенный
   /// дефолт (QuickJS на Android, JavaScriptCore на iOS).
   ///
-  /// Дефолтному QuickJS поднимаем стек до 32 МБ: player.js — огромный
-  /// минифицированный скрипт с глубокими выражениями, дефолтного 1 МБ не
-  /// хватает ("InternalError: unconsistent stack size", поймано на
-  /// устройстве 2026-08-23). stackSize применяется лениво в
-  /// _ensureEngine(), т.е. успевает до первого evaluate.
-  FlutterJsRuntime({JavascriptRuntime? engine}) : _js = engine ?? _createDefault();
+  /// [stackSize] пробрасывается в QuickJsRuntime2.stackSize
+  /// (jsSetMaxStackSize). Дефолт пакета 1 МБ; для диагностики матрицы
+  /// размеров можно переопределить. Применяется лениво до первого
+  /// evaluate (_ensureEngine).
+  FlutterJsRuntime({JavascriptRuntime? engine, int? stackSize})
+      : _js = engine ?? _createDefault(stackSize);
 
-  static JavascriptRuntime _createDefault() {
+  static JavascriptRuntime _createDefault(int? stackSize) {
     final rt = getJavascriptRuntime();
-    if (rt is QuickJsRuntime2) {
-      rt.stackSize = 32 * 1024 * 1024;
+    if (rt is QuickJsRuntime2 && stackSize != null) {
+      rt.stackSize = stackSize;
     }
     return rt;
   }

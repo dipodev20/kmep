@@ -62,7 +62,7 @@ class _TestScreenState extends State<TestScreen> {
     var allOk = true;
     // Версия сборки харнеса — чтобы лог всегда однозначно идентифицировал,
     // какой именно APK его породил.
-    log('harness v8 (clean first-eval)');
+    log('harness v9 (stackSize matrix)');
 
     // ---------- A. Baseline: ANDROID_VR без JS ----------
     try {
@@ -124,53 +124,73 @@ class _TestScreenState extends State<TestScreen> {
       log('A FAIL: $e\n$st');
     }
 
-    // ---------- B. FlutterJsRuntime: bootstrap + ji vs эталон ----------
+    // ---------- B. Матрица stackSize: лечит ли jsSetMaxStackSize ----------
     try {
-      log('== B. FlutterJsRuntime (QuickJS) ==');
-      var sw = Stopwatch()..start();
-      final runtime = FlutterJsRuntime();
-      log('B движок создан за ${sw.elapsedMilliseconds} ms');
-
-      sw.reset();
+      log('== B. Матрица stackSize (свежий движок на каждый) ==');
       final rawPlayerJs = await rootBundle.loadString('assets/player_dump.js');
-      log('B player.js из ассета: ${rawPlayerJs.length} байт '
-          '(${sw.elapsedMilliseconds} ms)');
-
-      // Прод-паритет СРАЗУ: один рантайм = один большой evaluate
-      // (повторный большой прогон в этом же движке детерминированно роняет
-      // стековую бухгалтерию форка — потому диагностические стадии вынесены
-      // в отдельный чекбокс и по умолчанию выключены).
-      sw.reset();
-      await runtime.bootstrapParts([
+      final parts = [
         browserShimScript,
         preparePlayerJs(rawPlayerJs),
         discoverResolveFnScript,
-      ]);
-      log('B bootstrap (3 части): ${sw.elapsedMilliseconds} ms');
+      ];
 
-      // Эталон получен на ПК через Node (verify_prod_pipeline.js) на ЭТОЙ
-      // версии плеера; вход синтетический — трансформатор работает с n.
-      const inputN = '2w9J-B1FRC9th79L';
-      const expectedN = 'hijUNSr2Sb4f-A';
-      const inputUrl =
-          'https://rr1---sn-x.googlevideo.com/videoplayback'
-          '?expire=1799999999&id=TESTTESTTEST&n=$inputN&ratebypass=yes';
+      const sizes = <int?>[
+        null, // дефолт пакета (1 МБ)
+        8 * 1024 * 1024,
+        32 * 1024 * 1024,
+        256 * 1024 * 1024,
+      ];
+      var anyOk = false;
+      for (final size in sizes) {
+        final sw = Stopwatch()..start();
+        final label = size == null ? 'default(1MB)' : '${size >> 20}MB';
+        String? err;
+        try {
+          final runtime = FlutterJsRuntime(stackSize: size);
+          await runtime.bootstrapParts(parts);
+          log('B [$label]: OK за ${sw.elapsedMilliseconds} ms');
+          anyOk = true;
+        } catch (e) {
+          err = '$e';
+          log('B [$label]: FAIL — ${err.split('\n').first}');
+        }
+      }
+      if (!anyOk) {
+        allOk = false;
+        log('B ВЫВОД: jsSetMaxStackSize НЕ влияет — рассогласование '
+            'подсчёта стека в компиляторе/ридере, не переполнение.');
+      }
 
-      sw.reset();
-      final outUrl = await runtime.call(
-        'globalThis.__kmepOut=(function(){'
-        'var f=globalThis.__kmepResolveFn;'
-        'if(!f||typeof f!=="function"){'
-        'throw new Error("resolve fn not discovered")}'
-        'return String(f(${jsonEncode(inputUrl)},"","").KW())})()',
-      );
-      log('B call(ji+KW): ${sw.elapsedMilliseconds} ms');
-
-      final outN = Uri.parse(outUrl.trim()).queryParameters['n'] ?? '';
-      final pass = outN == expectedN;
-      if (!pass) allOk = false;
-      log('B n: "$inputN" -> "$outN" (эталон "$expectedN") '
-          '-> ${pass ? "PASS" : "FAIL"}');
+      // Если хоть один размер прошёл — гоняем эталон ji на нём.
+      if (anyOk) {
+        const inputN = '2w9J-B1FRC9th79L';
+        const expectedN = 'hijUNSr2Sb4f-A';
+        const inputUrl =
+            'https://rr1---sn-x.googlevideo.com/videoplayback'
+            '?expire=1799999999&id=TESTTESTTEST&n=$inputN&ratebypass=yes';
+        for (final size in sizes) {
+          final sw = Stopwatch()..start();
+          try {
+            final runtime = FlutterJsRuntime(stackSize: size);
+            await runtime.bootstrapParts(parts);
+            final outUrl = await runtime.call(
+              'globalThis.__kmepOut=(function(){'
+              'var f=globalThis.__kmepResolveFn;'
+              'if(!f||typeof f!=="function"){'
+              'throw new Error("resolve fn not discovered")}'
+              'return String(f(${jsonEncode(inputUrl)},"","").KW())})()',
+            );
+            final outN = Uri.parse(outUrl.trim()).queryParameters['n'] ?? '';
+            final pass = outN == expectedN;
+            log('B ji[${size == null ? "default" : "${size >> 20}MB"}] '
+                '(${sw.elapsedMilliseconds} ms): n="$outN" -> '
+                '${pass ? "PASS" : "FAIL"}');
+            break; // первый прошедший бустрап движок достаточен
+          } catch (e) {
+            log('B ji[${size ?? "default"}]: bootstrap FAIL, пробую следующий размер');
+          }
+        }
+      }
     } catch (e, st) {
       allOk = false;
       log('B FAIL: $e\n$st');

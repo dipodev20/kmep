@@ -1,17 +1,19 @@
-# KMEP-proto: бриф для агента
-
-> **СТАТУС 2026-08-23, утро-2:** on-device harness собран и готов к установке.
-> **APK: `/storage/emulated/0/Download/kmep_proto_harness.apk`** (release, 52 МБ).
-> Кнопка "Run on-device test": A) ANDROID_VR baseline (прямые URL без JS),
-> B) FlutterJsRuntime bootstrap player.js из ассета + вызов ji + сверка с
-> эталоном (`n 2w9J-B1FRC9th79L -> hijUNSr2Sb4f-A`, снят verify_prod_pipeline
-> на этой версии дампа), тайминги bootstrap/call отдельно, ошибки целиком
-> на экране. Сборка — GitHub Actions (репо `dipodev20/vidora-kmep-proto`,
-> private; workflow build_harness_apk.yml, артефакт при каждом пуше).
-> Грабли сборки (решены в android/build.gradle.kts): AGP 9.0.1 поднят в
-> classpath корня; library-модули (flutter_js) форсированы 11/11,
-> app остался 17/17 — вложенность plugins.withId важна.
-> После проверки скриншотом — следующий шаг: интеграция kmep-proto в Vidora.
+> **СТАТУС 2026-08-23, день:** on-device smoke test ВЫПОЛНЕН ДО КОНЦА.
+> Итог: **A-baseline PASS на телефоне** (ANDROID_VR, 27 форматов, 2160p,
+> HTTP 200 — InnerTube+парсер полностью рабочие на устройстве).
+> **Блокер найден и задокументирован**: форк QuickJS во flutter_js
+> детерминированно падает на player.js ("InternalError: unconsistent
+> stack size", всегда pc=2895) при определённых последовательностях
+> evaluate — воспроизведён матрицей стадий (см. kmep_proto_harness,
+> логи в истории чата владельца). Это баг ПЛАГИНА, не нашего кода.
+> Пути решения JS-на-мобиле (по приоритету):
+>   1. Собственный dart:ffi байндинг поверх prebuilt quickjs .so
+>      (полный контроль стека/потока; работа на 1-2 дня);
+>   2. Апстрим-иссью в abner/flutter_js с нашим репро-кейсом;
+>   3. НЕ использовать JS на мобиле в MVP: ANDROID_VR-primary +
+>      серверный фолбэк (backend/) там, где нужен WEB-клиент.
+> APK харнеса v8 (воспроизведение): GitHub Actions артефакт.
+> Ревью Claude — по материалам AGENT_HANDOFF целиком.
 
 Ты продолжаешь работу над `kmep-proto` — внутренним прототипом для Vidora
 (отдельно от публичного будущего KMEP на Kotlin Multiplatform, см. ниже).

@@ -37,6 +37,14 @@ class ExtractionOrchestrator {
   final Map<String, WatchPageMeta?> _metaCache = {};
   final Map<String, String?> _poTokenCache = {};
 
+  /// Сколько раз все клиенты исчерпаны и понадобился бы backend-фолбэк.
+  /// Backend остаётся в коде, но не деплоится: по этому счётчику владелец
+  /// видит реальную потребность в хостинге (логировать/отдавать метрикой).
+  int wouldUseBackendCount = 0;
+
+  /// Последние причины срабатывания would-use-backend (кольцо на 20 записей).
+  final List<String> wouldUseBackendReasons = [];
+
   ExtractionOrchestrator({
     required this.config,
     required this.cache,
@@ -177,6 +185,13 @@ class ExtractionOrchestrator {
       await cache.putVideo(videoId, best);
       return best;
     }
+
+    // Backend не деплоится (решение владельца), но факт потребности
+    // фиксируем — это данные для решения о хостинге в будущем.
+    wouldUseBackendCount++;
+    wouldUseBackendReasons.add(
+        '$videoId: ${errors.entries.map((e) => '${e.key}=${e.value.code.name}').join(', ')}');
+    if (wouldUseBackendReasons.length > 20) wouldUseBackendReasons.removeAt(0);
 
     if (config.enableEmbeddedYtdlp && backendFallback != null) {
       try {
