@@ -49,16 +49,24 @@ class FlutterJsRuntime implements JsRuntime {
 
   @override
   Future<void> bootstrap(String script) async {
-    final result = _js.evaluate(script);
-    if (result.isError) {
-      throw KMEPException(
-        KMEPErrorCode.nsigFail,
-        'bootstrap player.js упал: ${result.stringResult}',
-      );
+    await bootstrapParts([script]);
+  }
+
+  @override
+  Future<void> bootstrapParts(List<String> parts) async {
+    for (var i = 0; i < parts.length; i++) {
+      final result = _js.evaluate(parts[i]);
+      if (result.isError) {
+        throw KMEPException(
+          KMEPErrorCode.nsigFail,
+          'bootstrap player.js упал (часть ${i + 1}/${parts.length}): '
+          '${result.stringResult}',
+        );
+      }
     }
     // Санити: discovery обязан найти аплайер. Если нет — лучше узнать сейчас.
     final probe = _callRaw(
-      'String(globalThis.__kmepResolveFn ? "ok" : "missing")');
+        'String(globalThis.__kmepResolveFn ? "ok" : "missing")');
     if (probe == 'missing') {
       throw const KMEPException(
         KMEPErrorCode.nsigFail,

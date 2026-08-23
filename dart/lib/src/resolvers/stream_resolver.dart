@@ -22,6 +22,13 @@ import '../models/kmep_models.dart';
 abstract class JsRuntime {
   Future<void> bootstrap(String script);
   Future<String> call(String expression);
+
+  /// Bootstrap из НЕСКОЛЬКИХ отдельных evaluate-вызовов вместо одной
+  /// склейки. Мост flutter_js на Android не переваривает одиночный
+  /// исходник >~2.6 МБ ("InternalError: unconsistent stack size", поймано
+  /// на устройстве), хотя те же куски по отдельности выполняются — поэтому
+  /// прод-пайплайн шлёт шим/player.js/discovery раздельно.
+  Future<void> bootstrapParts(List<String> parts);
 }
 
 /// Заглушки под браузерные глобалы, которых нет в голом JS-движке.
@@ -362,8 +369,13 @@ class StreamResolver {
     if (_bootstrappedFor == jsUrl) return; // тот же player.js — не грузим повторно
     final playerJs = await fetchPlayerJs(jsUrl);
     // Патч window=this + коллектор замыкания — внутри preparePlayerJs
-    // (найдено экспериментально, см. комментарии там).
-    await jsRuntime.bootstrap(buildBootstrapScript(playerJs));
+    // (найдено экспериментально, см. комментарии там). Части шлём
+    // РАЗДЕЛЬНО: склейка в один evaluate ломает мост flutter_js.
+    await jsRuntime.bootstrapParts([
+      browserShimScript,
+      preparePlayerJs(playerJs),
+      discoverResolveFnScript,
+    ]);
     _bootstrappedFor = jsUrl;
   }
 

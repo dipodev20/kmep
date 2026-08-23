@@ -769,14 +769,19 @@ void main() {
 class _FakeJsRuntime implements JsRuntime {
   final List<String> answers;
   final expressions = <String>[];
+  final bootstrapPartsLog = <int>[];
   int bootstrapCount = 0;
   bool throwOnCall = false;
 
   _FakeJsRuntime(this.answers);
 
   @override
-  Future<void> bootstrap(String script) async {
+  Future<void> bootstrap(String script) => bootstrapParts([script]);
+
+  @override
+  Future<void> bootstrapParts(List<String> parts) async {
     bootstrapCount++;
+    bootstrapPartsLog.add(parts.length);
   }
 
   @override

@@ -133,19 +133,27 @@ rl.on('line', function(line) {
   }
 
   @override
-  Future<void> bootstrap(String script) async {
+  Future<void> bootstrap(String script) => bootstrapParts([script]);
+
+  @override
+  Future<void> bootstrapParts(List<String> parts) async {
     await _ensureStarted();
     final dir = await Directory.systemTemp.createTemp('kmep_bootstrap_');
-    final scriptFile = File('${dir.path}/boot.js');
-    await scriptFile.writeAsString(script, flush: true);
     try {
-      final res = await _request({'type': 'load', 'path': scriptFile.path})
-          .timeout(callTimeout);
-      if (res['ok'] != true) {
-        throw KMEPException(
-          KMEPErrorCode.nsigFail,
-          'bootstrap player.js упал: ${res['err']}',
-        );
+      for (var i = 0; i < parts.length; i++) {
+        // Каждый part — самостоятельный top-level скрипт: пишем во
+        // временный файл и грузим отдельным load (eval внутри части не
+        // нужен, у Node и так глобальный скоуп).
+        final scriptFile = File('${dir.path}/part_$i.js');
+        await scriptFile.writeAsString(parts[i], flush: true);
+        final res = await _request({'type': 'load', 'path': scriptFile.path})
+            .timeout(callTimeout);
+        if (res['ok'] != true) {
+          throw KMEPException(
+            KMEPErrorCode.nsigFail,
+            'bootstrap player.js упал (часть ${i + 1}/${parts.length}): ${res['err']}',
+          );
+        }
       }
     } on TimeoutException {
       throw KMEPException(KMEPErrorCode.nsigFail, 'bootstrap player.js: таймаут');
