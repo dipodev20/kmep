@@ -33,10 +33,10 @@ subprojects {
                 targetCompatibility = JavaVersion.VERSION_11
             }
         }
-    }
-    plugins.withId("org.jetbrains.kotlin.android") {
-        tasks.withType<KotlinCompile>().configureEach {
-            compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
+        plugins.withId("org.jetbrains.kotlin.android") {
+            tasks.withType<KotlinCompile>().configureEach {
+                compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
+            }
         }
     }
 }
