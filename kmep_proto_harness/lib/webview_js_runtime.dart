@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:ui' show Size;
 import 'dart:convert';
+import 'dart:ui' show Size;
 
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -18,10 +18,6 @@ import 'package:kmep_proto/kmep.dart'
 ///
 /// Origin: страница грузится через loadDataWithBaseURL с baseUrl
 /// https://www.youtube.com/ — для player.js это родной origin.
-///
-/// ОГРАНИЧЕНИЯ: evaluateJavascript асинхронный (мост через платформенный
-/// канал) — каждый вызов ~1-5 мс оверхеда; большие скрипты передаются
-/// строкой через канал без проблем (проверено 2.6 МБ).
 class WebViewJsRuntime implements JsRuntime {
   HeadlessInAppWebView? _headless;
   InAppWebViewController? _controller;
@@ -41,6 +37,7 @@ class WebViewJsRuntime implements JsRuntime {
           KMEPErrorCode.nsigFail, 'WebViewJsRuntime уже освобождён');
     }
     final headless = HeadlessInAppWebView(
+      initialSize: const Size(1280, 720),
       initialSettings: InAppWebViewSettings(
         // Никакого визуального мусора и лишней активности.
         javaScriptEnabled: true,
@@ -60,31 +57,49 @@ class WebViewJsRuntime implements JsRuntime {
       onConsoleMessage: (_, __) {}, // глушим шум плеера
     );
     await headless.run();
-    await headless.setSize(const Size(1280, 720));
-    await headless.run();
     _headless = headless;
     _controller = headless.webViewController;
     await _ready.future.timeout(const Duration(seconds: 15));
     return _controller!;
   }
 
+  /// Голый мост evaluateJavascript + текстовое представление сырого ответа
+  /// (repr). repr идёт во все сообщения об ошибках — по нему видно, ЧТО
+  /// именно вернул бридж (null / пустая строка / двойное JSON-кодирование
+  /// / нормальный JSON), не гадая по пустым значениям.
+  Future<(dynamic, String)> _evalRaw(String src) async {
+    final c = await _ensure();
+    final raw = await c.evaluateJavascript(source: src);
+    final String repr;
+    if (raw == null) {
+      repr = 'null';
+    } else if (raw is String) {
+      repr = raw.isEmpty
+          ? '<пустая строка>'
+          : 'String(${raw.length}): "${_clip(raw)}"';
+    } else {
+      repr = '${raw.runtimeType}: ${_clip('$raw')}';
+    }
+    return (raw, repr);
+  }
+
   /// Выполняет код как top-level statement'ы (indirect eval сохраняет
   /// глобальный скоуп — критично для var-деклараций player.js), ошибки
   /// возвращает значением {ok,err}.
   Future<Map<String, dynamic>> _runStatement(String code) async {
-    final c = await _ensure();
     final src = '(function(){'
         'try{ (0,eval)(${jsonEncode(code)}); '
         'return JSON.stringify({ok:true}); }'
         'catch(e){ return JSON.stringify({ok:false, '
         'err:String(e&&(e.stack||e.message)||e)}); }'
         '})()';
-    final raw = await c.evaluateJavascript(source: src);
-    if (raw == null) {
-      throw const KMEPException(
-          KMEPErrorCode.nsigFail, 'WebView вернул null (JS упал до eval?)');
+    final (raw, repr) = await _evalRaw(src);
+    final decoded = _decodeResult(raw, 'JS-statement', repr);
+    if (decoded['ok'] != true) {
+      throw KMEPException(KMEPErrorCode.nsigFail,
+          'bootstrap-часть упала: ${decoded['err']}');
     }
-    return jsonDecode(raw as String) as Map<String, dynamic>;
+    return decoded;
   }
 
   @override
@@ -93,40 +108,98 @@ class WebViewJsRuntime implements JsRuntime {
   @override
   Future<void> bootstrapParts(List<String> parts) async {
     for (var i = 0; i < parts.length; i++) {
-      final res = await _runStatement(parts[i]);
-      if (res['ok'] != true) {
-        throw KMEPException(
-          KMEPErrorCode.nsigFail,
-          'bootstrap player.js упал (часть ${i + 1}/${parts.length}): ${res['err']}',
-        );
-      }
+      await _runStatement(parts[i]);
     }
-    // Санити: discovery обязан найти аплайер.
-    final probe = await call(
-        'String(globalThis.__kmepResolveFn ? "ok" : "missing")');
-    if (probe == 'missing') {
-      throw const KMEPException(
+    // Санити: различаем «бридж не отвечает» от «discovery не нашёл fn».
+    // Раньше здесь сравнивали строку с 'missing' — мусорный ответ бридга
+    // ('') проходил как ложный PASS. Теперь проверяем структуру и падаем
+    // с точным диагнозом.
+    final env = await envSnapshot();
+    if (env['fn'] != 'function') {
+      final fns = env['fns'];
+      final reason = fns == 0
+          ? 'коллектор не выгрузил ни одной функции из IIFE '
+              '(fns=0; href=${env['href']})'
+          : 'функций выгружено $fns, но discovery не выбрал кандидата '
+              '(нет маркера "alr"/"yes" или dummy-тест не прошёл)';
+      throw KMEPException(
         KMEPErrorCode.nsigFail,
-        'discovery не нашёл sig/nsig функцию в этом player.js',
+        'discovery не нашёл sig/nsig функцию в этом player.js: $reason',
       );
     }
   }
 
+  /// Снимок состояния JS-контекста одним выражением: эхо бридга, origin,
+  /// целостность встроек (String/JSON могли быть затёрты top-level var из
+  /// player.js через indirect eval), размер __closureFns, найденная fn.
+  /// Бросает с repr сырого ответа, если бридж аномальный.
+  Future<Map<String, dynamic>> envSnapshot() async {
+    final src = '(function(){'
+        'try{ return JSON.stringify({'
+        'echo:String(6*7),'
+        'href:String(location.href),'
+        'origin:String(location.origin),'
+        'strOk:String(123)==="123",'
+        'jsonOk:(function(){try{return JSON.stringify({a:1})==="{\\"a\\":1}"}'
+        'catch(e){return false}})(),'
+        'doc:typeof document,'
+        'winSame:Object.is(window,globalThis.window),'
+        'fns:Object.keys(globalThis.__closureFns||{}).length,'
+        'fn:typeof globalThis.__kmepResolveFn,'
+        'fnName:String(globalThis.__kmepResolveFnName||"")'
+        '}); }'
+        'catch(e){ return JSON.stringify({ok:false, '
+        'err:String(e&&(e.stack||e.message)||e)}); }'
+        '})()';
+    final (raw, repr) = await _evalRaw(src);
+    final decoded = _decodeResult(raw, 'envSnapshot', repr);
+    if (decoded.containsKey('err')) {
+      throw KMEPException(
+          KMEPErrorCode.nsigFail, 'envSnapshot упал: ${decoded['err']}');
+    }
+    // echo !== '7' означает: выражение выполнилось, но вернулось НЕ то,
+    // что посчитали внутри WebView — мост искажает результат.
+    if (decoded['echo'] != '7') {
+      throw KMEPException(
+        KMEPErrorCode.nsigFail,
+        'мост искажает результаты (echo=${decoded['echo']} вместо 7); '
+            'сырой ответ: $repr',
+      );
+    }
+    return decoded;
+  }
+
+  /// Мост evaluateJavascript возвращает ЛИБО сырую строку (тогда это JSON
+  /// от JSON.stringify), ЛИБО уже распарсенный Map (платформа декодирует
+  /// сама) — принимаем обе формы, аномалии показываем текстом.
+  Map<String, dynamic> _decodeResult(dynamic raw, String what, String repr) {
+    if (raw is Map) {
+      return raw.cast<String, dynamic>();
+    }
+    if (raw is String && raw.isNotEmpty) {
+      try {
+        return jsonDecode(raw) as Map<String, dynamic>;
+      } on FormatException catch (e) {
+        throw KMEPException(KMEPErrorCode.nsigFail,
+            '$what: бридж вернул не-JSON ($e), сырой ответ: $repr');
+      }
+    }
+    throw KMEPException(
+      KMEPErrorCode.nsigFail,
+      '$what: неожиданный ответ моста (${raw.runtimeType}), сырой ответ: $repr',
+    );
+  }
+
   @override
   Future<String> call(String expression) async {
-    final c = await _ensure();
     final src = '(function(){'
         'try{ var r=(function(){${expression}})(); '
         'return JSON.stringify({ok:true,v:String(r===undefined?"":r)}); }'
         'catch(e){ return JSON.stringify({ok:false, '
         'err:String(e&&(e.stack||e.message)||e)}); }'
         '})()';
-    final raw = await c.evaluateJavascript(source: src);
-    if (raw == null) {
-      throw const KMEPException(
-          KMEPErrorCode.nsigFail, 'JS-вызов: WebView вернул null');
-    }
-    final decoded = jsonDecode(raw as String) as Map<String, dynamic>;
+    final (raw, repr) = await _evalRaw(src);
+    final decoded = _decodeResult(raw, 'JS-вызов', repr);
     if (decoded['ok'] != true) {
       throw KMEPException(
           KMEPErrorCode.nsigFail, 'JS-вызов упал: ${decoded['err']}');
@@ -141,3 +214,6 @@ class WebViewJsRuntime implements JsRuntime {
     _controller = null;
   }
 }
+
+String _clip(String s, [int n = 200]) =>
+    s.length > n ? '${s.substring(0, n)}...' : s;

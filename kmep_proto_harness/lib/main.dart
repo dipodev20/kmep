@@ -62,7 +62,7 @@ class _TestScreenState extends State<TestScreen> {
     var allOk = true;
     // Версия сборки харнеса — чтобы лог всегда однозначно идентифицировал,
     // какой именно APK его породил.
-    log('harness v11 (webview+fn diagnostics)');
+    log('harness v12 (webview bridge diagnostics)');
 
     // ---------- A. Baseline: ANDROID_VR без JS ----------
     try {
@@ -144,6 +144,17 @@ class _TestScreenState extends State<TestScreen> {
         discoverResolveFnScript,
       ]);
       log('B bootstrap (2 части): ${sw.elapsedMilliseconds} ms');
+
+      // Снимок JS-контекста: эхо бридга, origin, целостность встроек,
+      // сколько функций выгрузил коллектор, какая fn выбрана. По этому
+      // блоку видно, ГДЕ именно рвётся цепочка player.js -> n-transform.
+      final env = await runtime.envSnapshot();
+      log('B env: echo=${env['echo']} href=${env['href']} '
+          'origin=${env['origin']}');
+      log('B env: strOk=${env['strOk']} jsonOk=${env['jsonOk']} '
+          'doc=${env['doc']} winSame=${env['winSame']}');
+      log('B env: fns=${env['fns']} fn=${env['fn']} '
+          'fnName="${env['fnName']}"');
 
       // Эталон получен на ПК через Node на ЭТОЙ версии плеера.
       const inputN = '2w9J-B1FRC9th79L';
