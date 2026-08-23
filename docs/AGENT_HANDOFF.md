@@ -161,6 +161,36 @@ buildSigCallExpression/buildNsigCallExpression удалены — таких т�
 
 ## Следующие шаги (бывшая главная задача закрыта)
 
+### WebViewJsRuntime на устройстве: PASS (2026-08-23, сессия v11-v14)
+
+On-device харнес (kmep_proto_harness, APK через CI
+`.github/workflows/build_harness_apk.yml`, артефакт `kmep-proto-harness-apk`)
+прошёл ОБЕ стадии: A) ANDROID_VR baseline 27 форматов maxH=2160; B) n-тест
+на живом player.js в headless WebView: `2w9J-B1FRC9th79L` ->
+`hijUNSr2Sb4f-A` == эталон Node. Контекст: origin youtube.com корректный,
+встроики целы, коллектор выгрузил fns=4090, discovery выбрал `ji`.
+
+**ГЛАВНАЯ ГРАБЛЯ (стоит дня): обёртка вызова для evaluateJavascript.**
+Форма `(function(){try{ var r=(function(){EXPR})(); return ... })()`
+(вложенная IIFE вокруг выражения) НА ANDROID МОЛЧА ВОЗВРАЩАЕТ r=undefined —
+даже для кода с безусловным `return String(...)`. Никаких исключений,
+мост отдаёт честный JSON с пустой строкой; легко принять за «discovery не
+сработал» или «бридж сломан». РАБОЧАЯ форма — плоская:
+`(function(){try{ var r=(EXPR); return JSON.stringify(...) })()`.
+Правило: не оборачивать пользовательское выражение в дополнительную
+функцию, подставлять как есть.
+
+Вторые грабли: flutter_inappwebview сам делает json.decode ответа один раз
+(строка -> String), наш код декодирует второй раз; принимаем обе формы
+(String|Map) в `_decodeResult`. Санити discovery сравнивал строку с
+'missing' — мусорный '' проходил как ложный PASS; теперь структура
+(envSnapshot: echo/origin/strOk/jsonOk/fns/fn) и пустой результат call()
+— громкое исключение с repr сырого ответа моста.
+
+Следующий шаг: перенести WebViewJsRuntime из харнеса в прод-приложение
+(flutter_inappwebview уже совместим по AGP 8.7.3+), заменив
+FlutterJsRuntime (QuickJS падает на player.js: "unconsistent stack size").
+
 ### Прогресс по шагам (обновлено 2026-08-23, ночная сессия — ПОЧТИ ВСЁ ЗАКРЫТО)
 
 1. ~~JsRuntime~~ — NodeProcessJsRuntime + FlutterJsRuntime.
