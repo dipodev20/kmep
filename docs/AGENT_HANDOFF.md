@@ -1,13 +1,17 @@
 # KMEP-proto: бриф для агента
 
-> **СТАТУС УТРА 2026-08-23 (для владельца):** ночная сессия закрыла всё
-> запланированное. Главный результат — **success rate 98% (49/50 видео)**
-> через полный оркестратор с PO-токенами; найден и починен корневой баг
-> 74% отказов (сырой n в прямых URL от WEB+POT). dart/: 29 тестов,
-> flutter_integration/: 5 тестов, анализаторы чисты. Что осталось реально:
-> гонка FlutterJsRuntime на устройстве, метрики с резидентного IP
-> (команды готовы в разделе прогресса), ревью Claude. Сервер bgutil
-> оставлен запущенным на порту 4416 (PID в pgrep -f main.js).
+> **СТАТУС 2026-08-23, утро-2:** on-device harness собран и готов к установке.
+> **APK: `/storage/emulated/0/Download/kmep_proto_harness.apk`** (release, 52 МБ).
+> Кнопка "Run on-device test": A) ANDROID_VR baseline (прямые URL без JS),
+> B) FlutterJsRuntime bootstrap player.js из ассета + вызов ji + сверка с
+> эталоном (`n 2w9J-B1FRC9th79L -> hijUNSr2Sb4f-A`, снят verify_prod_pipeline
+> на этой версии дампа), тайминги bootstrap/call отдельно, ошибки целиком
+> на экране. Сборка — GitHub Actions (репо `dipodev20/vidora-kmep-proto`,
+> private; workflow build_harness_apk.yml, артефакт при каждом пуше).
+> Грабли сборки (решены в android/build.gradle.kts): AGP 9.0.1 поднят в
+> classpath корня; library-модули (flutter_js) форсированы 11/11,
+> app остался 17/17 — вложенность plugins.withId важна.
+> После проверки скриншотом — следующий шаг: интеграция kmep-proto в Vidora.
 
 Ты продолжаешь работу над `kmep-proto` — внутренним прототипом для Vidora
 (отдельно от публичного будущего KMEP на Kotlin Multiplatform, см. ниже).
