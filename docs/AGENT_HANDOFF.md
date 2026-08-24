@@ -758,8 +758,14 @@ D3 WEB player запрос с serviceIntegrityDimensions.poToken.
 2. CDN-приёмка pot= на ГЕЙТЯЩЕМСЯ IP (мобильный/датацентровый) —
    единственный непроверенный рубеж (R5). Критерий: Range без pot= 403 ->
    с pot= 206/200.
-3. После ревью Claude: воткнуть провайдер в Vidora Beta-бридж одной
-   строкой рядом с выбором PoTokenProvider (или вместо NoOp).
+3. ~~Воткнуть провайдер в Vidora Beta-бридж~~ УЖЕ СДЕЛАНО (ночная
+   сессия Vidora-интеграции, параллельно этой): коммит eb931eb,
+   KmepExtractorService -> poTokenProvider: BotGuardJsPoTokenProvider
+   на ОТДЕЛЬНОМ WebBridgeJsRuntime (изоляция глобалов от player.js;
+   лениво, ANDROID_VR-first токена не требует). Ревью Claude — по
+   файлам lib/services/kmep/ и lib/services/extractor_router.dart репо
+   Vidora; маршрутизация движков тоже готова (ExtractorRouter с
+   фолбэком на NewPipe).
 
 Замечание для ревью: jsdom-часть (`jsdomEnvPart`, путь к модулю) — только
 десктопная диагностика внутри tool/, прод её не использует никогда.
