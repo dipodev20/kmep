@@ -20,9 +20,11 @@ class InnerTubeClient {
     String? poToken,
     int? signatureTimestamp,
     String? visitorData,
+    String hl = 'en',
+    String gl = 'US',
   }) async {
     final body = {
-      'context': config.buildContext(visitorData: visitorData),
+      'context': config.buildContext(visitorData: visitorData, hl: hl, gl: gl),
       'videoId': videoId,
       'contentCheckOk': true,
       'racyCheckOk': true,
@@ -41,26 +43,29 @@ class InnerTubeClient {
     );
   }
 
-  Future<Map<String, dynamic>> fetchNext(String videoId, {String? continuation}) async {
+  Future<Map<String, dynamic>> fetchNext(String videoId,
+      {String? continuation, String hl = 'en', String gl = 'US'}) async {
     final body = {
-      'context': config.buildContext(),
+      'context': config.buildContext(hl: hl, gl: gl),
       if (continuation != null) 'continuation': continuation else 'videoId': videoId,
     };
     return _post(config.nextEndpoint(), body, 'next');
   }
 
-  Future<Map<String, dynamic>> fetchBrowse(String browseId, {String? params, String? continuation}) async {
+  Future<Map<String, dynamic>> fetchBrowse(String browseId,
+      {String? params, String? continuation, String hl = 'en', String gl = 'US'}) async {
     final body = {
-      'context': config.buildContext(),
+      'context': config.buildContext(hl: hl, gl: gl),
       if (continuation != null) 'continuation': continuation else 'browseId': browseId,
       if (params != null) 'params': params,
     };
     return _post(config.browseEndpoint(), body, 'browse');
   }
 
-  Future<Map<String, dynamic>> fetchSearch(String query, {String? continuation}) async {
+  Future<Map<String, dynamic>> fetchSearch(String query,
+      {String? continuation, String hl = 'en', String gl = 'US'}) async {
     final body = {
-      'context': config.buildContext(),
+      'context': config.buildContext(hl: hl, gl: gl),
       if (continuation != null) 'continuation': continuation else 'query': query,
     };
     return _post(config.searchEndpoint(), body, 'search');

@@ -1,3 +1,28 @@
+> **СЕССИЯ 2026-08-24 (продолжение): язык контента hl/gl сквозным путём +
+> muxed-фолбэк скачивания.** В kmep_proto: InnerTubeClient — ВСЕ методы
+> (player/search/next/browse) принимают hl/gl; ExtractionOrchestrator
+> .fetchVideo(videoId, {hl, gl}) пробрасывает их в context.client
+> (дефолты en/US сохранены). В Vidora (не закоммичено): ContentSettingsService
+> (язык ru|en + интервал перемотки + качество по умолчанию, SharedPreferences,
+> singleton .instance + provider) -> main.dart регистрирует ОДИН источник
+> для обоих движков: KmepExtractorService.languageResolver и новый
+> ExtractorRouter.languageResolver (NewPipe-путь получает hl через
+> NativeExtractor, бета резолвит сама); VideoExtractor.kt реинициализирует
+> NewPipe при смене локали (ru->Localization("ru","RU"), en->("en","US")).
+> Настройки: секции «Язык контента», «Перемотка двойным тапом» (5/10/15/30),
+> «Качество по умолчанию» (дефолт работает, пока пользователь не выбрал своё
+> в плеере — _loadPreferredQuality fallback). Скачивание: StreamQuality
+> .pickDownload (пара видео+звук -> цельный muxed -> ЧЕСТНЫЙ null),
+> VideoDownloadService переведён на него; оба движка ставят маркер "muxed"
+> (NewPipe: videoStreams=цельные; KMEP: itag 18/22 или mp4a-кодек).
+> НАЙДЕН И ПОЧИНЕН БАГ pickDownload: последняя ветка возвращала беззвучное
+> видео вопреки своему же док-комментарию — теперь отказ (роутер откатится
+> на движок с полным набором). Тесты: dart/ 38 passed (+тест hl/gl в теле),
+> flutter_integration 14 passed, Vidora flutter test 15 passed (+pickDownload
+> x3 + muxed-маркер), analyze без ошибок/варнингов от новых правок.
+> НЕ ПРОВЕРЕНО на устройстве: реальная смена выдачи поиска после переключения
+> языка, muxed-скачивание в кейсе WEB+POT (только itag18).
+>
 > **ПОДТВЕРЖДЕНО НА УСТРОЙСТВЕ (2026-08-24, build-85):** владелец
 > включил Beta и смотрит контент через KMEP — индикатор в настройках:
 > «Последний ответ: KMEP (Vidora Extractor Beta)», KMEP ok: 5,

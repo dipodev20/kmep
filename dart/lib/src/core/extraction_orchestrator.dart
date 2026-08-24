@@ -94,7 +94,12 @@ class ExtractionOrchestrator {
     return token;
   }
 
-  Future<VideoInfo> fetchVideo(String videoId) async {
+  /// hl/gl — язык и регион контента (пробрасываются во все InnerTube-тела).
+  Future<VideoInfo> fetchVideo(
+    String videoId, {
+    String hl = 'en',
+    String gl = 'US',
+  }) async {
     final cached = await cache.getVideo(videoId);
     if (cached != null) return cached;
 
@@ -128,6 +133,8 @@ class ExtractionOrchestrator {
             poToken: poToken,
             signatureTimestamp: sts,
             visitorData: visitorData,
+            hl: hl,
+            gl: gl,
           );
           var video = PlayerParser.parse(raw, fallbackVideoId: videoId);
 

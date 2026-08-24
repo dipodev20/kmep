@@ -589,6 +589,34 @@ void main() {
       orchestrator.dispose();
     });
 
+    test('hl/gl из fetchVideo попадают в context.client тела запроса',
+        () async {
+      final bodies = <Map<String, dynamic>>[];
+      final mock = MockClient((req) async {
+        bodies.add(jsonDecode(req.body) as Map<String, dynamic>);
+        return http.Response(
+          jsonEncode(_okDirectResponse()),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+      final orchestrator = ExtractionOrchestrator(
+        config: const RemoteConfig(clientPriority: ['ANDROID_VR']),
+        cache: InMemoryCacheManager(),
+        streamResolver: StreamResolver(
+          jsRuntime: _FakeJsRuntime([]),
+          fetchPlayerJs: (_) async => fakePlayerJs,
+        ),
+        httpClientFactory: () => mock,
+      );
+
+      await orchestrator.fetchVideo('vid1', hl: 'ru', gl: 'RU');
+
+      expect(bodies.single['context']['client']['hl'], 'ru');
+      expect(bodies.single['context']['client']['gl'], 'RU');
+      orchestrator.dispose();
+    });
+
     test('TV: visitorData из watch-meta попадает в тело и заголовок', () async {
       final bodies = <Map<String, dynamic>>[];
       final headersList = <Map<String, String>>[];
