@@ -102,8 +102,7 @@ class _TestScreenState extends State<TestScreen> {
     var allOk = true;
     // Версия сборки харнеса — чтобы лог всегда однозначно идентифицировал,
     // какой именно APK его породил.
-    log('harness v15 (полный StreamResolver e2e: WEB -> player.js -> '
-        'WebView -> готовые URL всех форматов)');
+    log('harness v16 (+стадия D: on-device POT через BotGuardJsPoTokenProvider)');
 
     // Все созданные JS-рантаймы: в конце прогона освобождаем.
     final runtimes = <WebViewJsRuntime>[];
@@ -340,6 +339,102 @@ class _TestScreenState extends State<TestScreen> {
     } catch (e, st) {
       allOk = false;
       log('C FAIL: $e\n$st');
+    }
+
+    // ---------- D. On-device POT (BotGuard целиком в WebView) ----------
+    // Продакшен-BotGuardJsPoTokenProvider на СВЕЖЕМ WebViewJsRuntime:
+    // homepage-челлендж -> интерпретатор 62 KiB -> snapshot -> GenerateIT ->
+    // минтинг. Никаких шимов: настоящий DOM/navigator, origin youtube.com.
+    // Доказательная база: AGENT_HANDOFF.md, раздел «on-device POT» (R1/R2).
+    String? potD;
+    try {
+      log('== D. On-device POT (BotGuard в WebView) ==');
+      const videoId = 'dQw4w9WgXcQ';
+      var sw = Stopwatch()..start();
+
+      final runtimeD = WebViewJsRuntime();
+      runtimes.add(runtimeD);
+      final provider = BotGuardJsPoTokenProvider(
+        jsRuntime: runtimeD,
+        fetchText: _httpGetString,
+        stepTimeout: const Duration(seconds: 60),
+      );
+
+      potD = await provider.tokenFor(videoId);
+      final coldMs = sw.elapsedMilliseconds;
+      if (potD == null) {
+        throw KMEPException(KMEPErrorCode.potFail,
+            'POT не выдан: ${provider.lastError}');
+      }
+      log('D1[$coldMs ms] POT("$videoId"): ${potD.length} симв '
+          '${potD.substring(0, potD.length > 24 ? 24 : potD.length)}...');
+
+      // Маржинальная стоимость: тот же минтер, новый биндинг. Ожидание ~мс.
+      sw.reset();
+      const videoId2 = 'jNQXAC9IVRw';
+      final pot2 = await provider.tokenFor(videoId2);
+      log('D2[${sw.elapsedMilliseconds} ms] POT("$videoId2") из сессии: '
+          '${pot2 != null ? "ok (${pot2.length} симв)" : "FAIL: ${provider.lastError}"}');
+      if (pot2 == null) allOk = false;
+
+      // D3. WEB player запрос с токеном: статус и форма ответа.
+      sw.reset();
+      final metaD = await HttpWatchPageMetaProvider().fetch(videoId);
+      final vd = metaD?.visitorData;
+      final respD = await http
+          .post(
+            Uri.parse(
+                'https://www.youtube.com/youtubei/v1/player?prettyPrint=false'),
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': _desktopUA,
+              'X-YouTube-Client-Name': '1',
+              'X-YouTube-Client-Version': '2.20240808.00.00',
+              'Origin': 'https://www.youtube.com',
+              if (vd != null) 'X-Goog-Visitor-Id': vd,
+            },
+            body: jsonEncode({
+              'videoId': videoId,
+              'context': {
+                'client': {
+                  'clientName': 'WEB',
+                  'clientVersion': '2.20240808.00.00',
+                  'hl': 'en',
+                  'gl': 'US',
+                  if (vd != null) 'visitorData': vd,
+                }
+              },
+              'contentCheckOk': true,
+              'racyCheckOk': true,
+              if (metaD?.signatureTimestamp != null)
+                'playbackContext': {
+                  'contentPlaybackContext': {
+                    'signatureTimestamp': metaD!.signatureTimestamp,
+                  }
+                },
+              'serviceIntegrityDimensions': {'poToken': potD},
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+      final jD = jsonDecode(respD.body) as Map<String, dynamic>;
+      final stD = (jD['playabilityStatus']?['status'] ?? '?').toString();
+      final fmtsD = <Map<String, dynamic>>[
+        ...?((jD['streamingData']?['formats'] as List?)?.cast<Map<String, dynamic>>()),
+        ...?((jD['streamingData']?['adaptiveFormats'] as List?)
+            ?.cast<Map<String, dynamic>>()),
+      ];
+      log('D3[${sw.elapsedMilliseconds} ms] player+POT: HTTP ${respD.statusCode} '
+          'status=$stD форматов=${fmtsD.length} '
+          '(прямых=${fmtsD.where((f) => f['url'] != null).length}, '
+          'cipher=${fmtsD.where((f) => f['signatureCipher'] != null).length})');
+
+      // Итог стадии: токены выданы и WEB принял запрос с ними.
+      final dPass = potD.isNotEmpty && pot2 != null && stD != 'LOGIN_REQUIRED';
+      if (!dPass) allOk = false;
+      log('D -> ${dPass ? "PASS" : "FAIL"}');
+    } catch (e, st) {
+      allOk = false;
+      log('D FAIL: $e\n$st');
     }
 
     for (final r in runtimes) {

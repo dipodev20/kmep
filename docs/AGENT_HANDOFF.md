@@ -46,6 +46,11 @@
 >      серверный фолбэк (backend/) там, где нужен WEB-клиент.
 > APK харнеса v8 (воспроизведение): GitHub Actions артефакт.
 > Ревью Claude — по материалам AGENT_HANDOFF целиком.
+>
+> ПАРАЛЛЕЛЬНО (отдельная ветка, код не тронут): завершено открытое
+> исследование on-device POT/BotGuard без сервера bgutil — полный цикл
+> воспроизведён, токен проходит валидацию GenerateIT. См. раздел
+> «ОТДЕЛЬНОЕ ИССЛЕДОВАНИЕ: on-device POT/BotGuard» ниже + план интеграции.
 
 Ты продолжаешь работу над `kmep-proto` — внутренним прототипом для Vidora
 (отдельно от публичного будущего KMEP на Kotlin Multiplatform, см. ниже).
@@ -604,6 +609,139 @@ PO-token (BotGuard challenge -> integrity token -> минтинг) целико�
 VM/integrity token (работает пока sps==2) — кандидат в аварийный фолбэк.
 
 (Продолжение по мере экспериментов — см. ниже.)
+
+### Эксперименты (сессия R1, 2026-08-23 вечер) — ВОСПРОИЗВЕДЕНО БЕЗ СЕРВЕРА
+
+Всё живёт в `/tmp/opencode/pot_research/`. Ключевой скрипт — `bg_full2.js`
+(~250 строк, самодостаточный референс всего пайплайна).
+
+**R1. Полный цикл воспроизведён на Node без единой строки bgutil-кода.**
+homepage -> челлендж -> интерпретатор -> snapshot -> GenerateIT -> минтинг
+-> токены для обоих биндингов. Числа живого прогона:
+- homepage ~850 KiB, челлендж `program` ~38 KiB, интерпретатор **62 KiB**
+  (`https://www.google.com/js/th/<hash>.js` — НЕ большой gstatic);
+- eval интерпретатора ~60 мс; snapshot под jsdom 4–12 с (медленно! это
+  главный кандидат на оптимизацию/замер на устройстве);
+- GenerateIT: integrity token ~90 симв., **ttl=43200 c (12 ч)** — минтер
+  живёт сессию, кэшировать;
+- размер POT: биндинг visitorData ~600–808 симв. base64url, биндинг
+  videoId ~158 симв.;
+- ОДИН snapshot обслуживает много биндингов подряд (проверено: vd главной
+  + несколько videoId из одного минтера).
+
+**R2. Негативный контроль — ГЛАВНОЕ ДОКАЗАТЕЛЬСТВО.** GenerateIT
+отвечает HTTP 400 (`Invalid value`) на мусорную строку, пустой ответ И на
+деградированный hex-ответ из наших ранних шим-прогонов. Наш настоящий
+snapshot он ПРИНЯЛ и выдал integrity token => выполнение BotGuard
+прошло серверную валидацию Google. Токен не «похож на настоящий» — он
+прошёл проверку сервера, который видит разницу.
+
+**R3. Почему шим не прошёл (и почему это не проблема для WebView).**
+VM молча скорит окружение: при «недобором» возвращает деградированный
+ответ (hex, `$`-формат но без минтера). Proxy-трассировка доступов
+(`full_access_log2.js`, `value_diff.js`) показала, что VM зондирует
+антибот-маркеры (`navigator.webdriver`, `document.$cdc_asdjflasutopfhvcZLmcfl_`,
+`$wdc_`, `__webdriver_script_fn`) и богатую поверхность navigator
+(hardwareConcurrency, deviceMemory, maxTouchPoints, plugins, connection,
+mediaDevices, userActivation, keyboard, languages...). Обогащённый шим
+(shim_v2) всё ещё не добирает баллов, а вот **jsdom проходит стабильно
+(десятки прогонов, wpo=1 всегда)**. Настоящий Android WebView по поверхности
+строго богаче jsdom — риск скоринга на устройстве оцениваю как низкий,
+закрывается стадией C харнеса.
+
+**R4. Ротация/тайминги — ложные следы.** Подозрения на ротацию программ
+и гонку «DOM не устаканился» проверены матрицами (`rotation_test.js`,
+`settle_shim.js`): программы меняются каждый запрос (38 KiB ± ), но все
+совместимы; задержки перед eval ничего не меняют ни для jsdom, ни для
+шима. Единственный стабильный фактор — полнота DOM/navigator.
+
+**R5. Верификация против CDN сегодня НЕинформативна**: текущий IP этого
+окружения не гейтится (Range даёт 206 даже без pot=). Эксперимент
+html5_generate_content_po_token сегодня выключен (прямых URL у WEB нет).
+Поэтому конечное подтверждение «CDN принимает наш pot» остаётся за
+стадией C на устройстве (мобильные IP гейтятся охотнее) — либо за
+будущими прогонами с датацентрового IP, где гейтинг активен.
+
+Бонус-находка: `createColdStartToken()` в bgutils-js — чистый JS без VM
+и integrity token (работает пока sps==2). Кандидат в аварийный фолбэк,
+не проверен.
+
+### Рабочий план интеграции on-device POT (сформулирован до реализации)
+
+Архитектура повторяет разделение StreamResolver'а: сеть в Dart,
+JS только для вычислений.
+1. Сеть (Dart): homepage -> ytcfg + `window.ytAtN` (looseJSON-парсер),
+   интерпретатор, POST GenerateIT (константы выше).
+2. JS (тот же WebViewJsRuntime, что для player.js): glue-скрипт со
+   state machine в globalThis (`__kmepBgStart/Snapshot/Mint/State`),
+   мост асинхронности поллингом; snapshot синхронный (array[0]).
+3. Dart-провайдер BotGuardJsPoTokenProvider implements PoTokenProvider:
+   кэш минтера по integrity token (TTL 12 ч), кэш токенов по биндингу,
+   singleFlight от параллельных генераций.
+4. Юнит-тесты на фейковом JsRuntime + негативные кейсы R2/R3.
+5. Стадия D харнеса on-device.
+
+### НОЧНАЯ СЕССИЯ R2 (2026-08-24): продакшен-реализация ЖИВАЯ, всё зелёное
+
+За ночь план из предыдущего раздела реализован и проверен на живом
+YouTube. Изменённые/созданные файлы (для ревью):
+- `dart/lib/src/core/botguard_pot_provider.dart` — BotGuardJsPoTokenProvider
+  + клей-JS (`botGuardGlueScript`) + parseLooseJson;
+- `dart/lib/src/models/kmep_models.dart` — KMEPErrorCode.potFail;
+- `dart/lib/kmep.dart` — экспорт провайдера;
+- `dart/test/botguard_pot_provider_test.dart` — 8 юнит-тестов;
+- `dart/tool/pot_js_e2e.dart` — живая диагностика по шагам;
+- `dart/tool/e2e_orchestrator.dart` — флаг `--pot-js`;
+- `kmep_proto_harness/lib/main.dart` — v16 со стадией D (on-device POT).
+
+**Починено при верификации (было сломано в первой редакции):**
+1. `parseLooseJson`: висячие запятые убирались через
+   `replaceAll(re, r'$1')` — у Dart замена ЛИТЕРАЛЬНАЯ, `$1` не
+   подставляется (в отличие от JS), в текст втыкался мусорный `$1` и
+   весь парсинг челленджа падал. -> `replaceAllMapped`. Это ломало ВСЁ.
+2. Тест: колбэк generateItResponder вызывался с неверной арностью
+   (компиляция теста).
+
+**Живые прогоны (продакшен-форма, NodeProcessJsRuntime+jsdom):**
+- `tool/pot_js_e2e.dart dQw4w9WgXcQ`: POT выдан за 45.6 c холодного
+  прогона — из них ~40 c это require(jsdom) на этом ARM-девайсе,
+  сам цикл BotGuard ~5 c; ВТОРОЙ токен из той же сессии — **0 мс**
+  (маржинальная стоимость минтинга нулевая: mintCallback кэшируется в VM);
+  player+POT status=OK 27 форматов; StreamResolver (второй рантайм,
+  прод-путь) разрешил itag18; Range 206/206 (IP не гейтится, R5).
+- `e2e_orchestrator.dart --pot-js`: **1/1 OK (100%)** через ПОЛНЫЙ
+  оркестратор. Первый запуск медленный (~минуты JIT компиляции dart run
+  на ARM) — не путать с пайплайном.
+- Тесты: dart/ 37 passed; flutter_integration 14 passed; flutter analyze
+  харнеса чисто.
+
+**Cold start token (аварийный парашют, /tmp/opencode/pot_research/
+cold_start_test.js):** порт createColdStartToken из bgutils-js — чистая
+математика БЕЗ VM/integrity token (28 симв для videoId). Round-trip decode
+OK; WEB player принимает запрос с ним синтаксически (HTTP 200 OK).
+Эффективность на негейтящемся IP проверить нельзя — держать как фолбэк,
+проверить на гейтящемся IP вместе со стадией D.
+
+**Стадия D харнеса (v16)**: BotGuardJsPoTokenProvider на СВЕЖЕМ
+WebViewJsRuntime без единого шима (настоящий DOM/navigator):
+D1 холодный POT + тайминг, D2 маржинальный токен (~мс ожидание),
+D3 WEB player запрос с serviceIntegrityDimensions.poToken.
+Готова к сборке APK через CI (push в main). ОЖИДАНИЕ: D1 несколько секунд
+(настоящий WebView должен быть быстрее jsdom), D2 миллисекунды,
+скоринг окружения проходит (R3).
+
+**Что осталось до полного закрытия темы:**
+1. Прогнать стадию D на телефоне (APK артефакт CI) — закрывает «скоринг
+   в настоящем WebView» и даёт честные тайминги on-device.
+2. CDN-приёмка pot= на ГЕЙТЯЩЕМСЯ IP (мобильный/датацентровый) —
+   единственный непроверенный рубеж (R5). Критерий: Range без pot= 403 ->
+   с pot= 206/200.
+3. После ревью Claude: воткнуть провайдер в Vidora Beta-бридж одной
+   строкой рядом с выбором PoTokenProvider (или вместо NoOp).
+
+Замечание для ревью: jsdom-часть (`jsdomEnvPart`, путь к модулю) — только
+десктопная диагностика внутри tool/, прод её не использует никогда.
+
 
 ## Общие правила работы в этом репо
 

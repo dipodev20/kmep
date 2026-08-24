@@ -29,13 +29,18 @@ Future<String> httpGetString(String url) async {
 Future<void> main(List<String> args) async {
   // Флаги: --pot-http[=URL] включить BgutilHttpPoTokenProvider
   // (нужен запущенный сервер bgutil; без него бот-чек/SABR на части видео).
+  // --pot-js включить BotGuardJsPoTokenProvider (POT целиком в JS-рантайме,
+  // без сервера; на десктопе — jsdom-окружение, на устройстве — WebView).
   Uri? potHttpUrl;
+  var potJs = false;
   final videos = <String>[];
   for (final a in args) {
     if (a == '--pot-http') {
       potHttpUrl = Uri.parse('http://127.0.0.1:4416');
     } else if (a.startsWith('--pot-http=')) {
       potHttpUrl = Uri.parse(a.substring('--pot-http='.length));
+    } else if (a == '--pot-js') {
+      potJs = true;
     } else {
       videos.add(a);
     }
@@ -44,8 +49,42 @@ Future<void> main(List<String> args) async {
     videos.addAll(['dQw4w9WgXcQ', 'jNQXAC9IVRw', 'aqz-KE-bpKQ']);
   }
 
-  final jsRuntime = NodeProcessJsRuntime();
+  final jsRuntime = NodeProcessJsRuntime(
+      callTimeout: const Duration(seconds: 180));
   final playerJsCache = <String, String>{};
+
+  // POT-провайдер для --pot-js: отдельный рантайм (jsdom на глобале),
+  // чтобы не смешивать состояние с player.js-рантаймом резолвера.
+  PoTokenProvider? potProvider;
+  NodeProcessJsRuntime? bgJsRuntime;
+  if (potHttpUrl != null) {
+    potProvider = BgutilHttpPoTokenProvider(baseUrl: potHttpUrl);
+  } else if (potJs) {
+    final bgRuntime = NodeProcessJsRuntime(callTimeout: const Duration(seconds: 180));
+    bgJsRuntime = bgRuntime;
+    potProvider = BotGuardJsPoTokenProvider(
+      jsRuntime: bgRuntime,
+      fetchText: httpGetString,
+      extraBootstrapParts: () => [
+        '''
+const _kmepRequire = (typeof require !== 'undefined')
+  ? require
+  : process.mainModule.require;
+const { JSDOM } = _kmepRequire('/tmp/opencode/bgutil/server/node_modules/jsdom');
+const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
+  url: 'https://www.youtube.com/', referrer: 'https://www.youtube.com/',
+});
+globalThis.window = dom.window;
+globalThis.document = dom.window.document;
+globalThis.location = dom.window.location;
+globalThis.origin = dom.window.origin;
+if (!Reflect.has(globalThis, 'navigator')) {
+  Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator });
+}
+''',
+      ],
+    );
+  }
 
   final orchestrator = ExtractionOrchestrator(
     config: const RemoteConfig(),
@@ -60,8 +99,7 @@ Future<void> main(List<String> args) async {
       },
     ),
     watchPageMetaProvider: HttpWatchPageMetaProvider(),
-    poTokenProvider:
-        potHttpUrl == null ? null : BgutilHttpPoTokenProvider(baseUrl: potHttpUrl),
+    poTokenProvider: potProvider,
   );
 
   var okCount = 0;
@@ -105,4 +143,5 @@ Future<void> main(List<String> args) async {
       '(success rate ${(okCount / videos.length * 100).toStringAsFixed(0)}%)');
   orchestrator.dispose();
   jsRuntime.dispose();
+  bgJsRuntime?.dispose();
 }

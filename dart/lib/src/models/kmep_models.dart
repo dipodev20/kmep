@@ -151,6 +151,7 @@ enum KMEPErrorCode {
   partial,
   nsigFail,
   poRequired,
+  potFail,
   sabrOnly,
   unavailable,
   channelUnavailable,

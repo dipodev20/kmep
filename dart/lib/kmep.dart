@@ -10,5 +10,6 @@ export 'src/core/remote_config.dart';
 export 'src/core/cache_manager.dart';
 export 'src/core/watch_page_meta.dart';
 export 'src/core/po_token.dart';
+export 'src/core/botguard_pot_provider.dart';
 export 'src/core/infra.dart';
 export 'src/runtimes/process_js_runtime.dart';
