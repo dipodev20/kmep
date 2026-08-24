@@ -1,3 +1,20 @@
+> **СТАТУС 2026-08-24, ночь (итог сессии «сделать KMEP рабочим»):**
+> KMEP ВКЛЮЧЁН СКВОЗНОЙ ПУТЬ. 1) Vidora: ExtractorRouter — все точки
+> вызова (плеер, шортсы, поиск, аудио/видео-скачивание) идут выбранным
+> движком, любая ошибка беты -> тихий фолбэк на NewPipe; подпись в
+> настройках обновлена. 2) Бета внутри использует on-device POT:
+> BotGuardJsPoTokenProvider на ОТДЕЛЬНОМ WebBridgeJsRuntime (изоляция от
+> player.js; ANDROID_VR-first токена не требует). 3) Десктопный e2e
+> провайдера: tokenFor ~25 c холодно / из кэша мс, WEB без POT=SABR-only,
+> с нашим POT прямой URL, после n-резолва Range 206 => CDN принимает наш
+> pot (закрыт открытый вопрос R5). 4) Починен древний падёж
+> test/widget_test (sqflite_ffi), flutter test 12 passed, analyze чист.
+> APK: release build-84 (vidora-84.apk). CI-грабля: git push отсюда ловит
+> "RPC failed; HTTP 408" на HTTP/2 — лечится `git -c http.version=HTTP/1.1
+> push`. НЕ проверено на устройстве: реальный просмотр через бета-движок,
+> тайминги POT в WebView (стадия D харнеса параллельной сессии), поведение
+> при пересоздании Activity.
+
 > **СТАТУС 2026-08-23, ночь:** kmep_proto ВНЕДРЁН в прод-приложение
 > Vidora как «Vidora Extractor (Beta)» (репо ~/vidora, коммит 7914760).
 > Архитектура: Kotlin VidoraExtractorBridge хостит СИСТЕМНЫЙ WebView
