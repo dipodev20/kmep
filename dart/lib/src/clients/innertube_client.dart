@@ -62,11 +62,18 @@ class InnerTubeClient {
     return _post(config.browseEndpoint(), body, 'browse');
   }
 
+  /// [params] — InnerTube-фильтры поиска в protobuf-base64 (например
+  /// '8gEBGgIgAQ==' = только шортсы, как чип «Shorts» в поиске YouTube).
   Future<Map<String, dynamic>> fetchSearch(String query,
-      {String? continuation, String hl = 'en', String gl = 'US'}) async {
+      {String? continuation, String? params, String hl = 'en', String gl = 'US'}) async {
     final body = {
       'context': config.buildContext(hl: hl, gl: gl),
-      if (continuation != null) 'continuation': continuation else 'query': query,
+      if (continuation != null)
+        'continuation': continuation
+      else ...{
+        'query': query,
+        if (params != null) 'params': params,
+      },
     };
     return _post(config.searchEndpoint(), body, 'search');
   }
