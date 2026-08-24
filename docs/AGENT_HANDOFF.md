@@ -1,3 +1,61 @@
+> **НОЧНАЯ СЕССИЯ 2026-08-24 (Vidora, «пока владелец спит») — 6 коммитов,
+> все CI-green.** Разобран файл /sdcard/настройки (каталог настроек
+> NewPipe-подобного клиента). ВЗЯТО в Vidora: регион контента (gl),
+> масштаб видео (contain/cover), тумблеры приватности (история просмотров,
+> сохранение/показ истории поиска), умное качество под сеть, полный
+> бэкап/рестор + импорт подписок в NewPipe-JSON формате. НЕ БРАТО
+> (осознанно): профили (большая отдельная задача), SponsorBlock (нужен
+> внешний сервис sponsor.ajay.app — кандидат в следующую сессию),
+> «вернуть дизлайки» (нужен внешний API), размер субтитров (субтитров
+> нет), переключатель HLS (плеер единый). СДЕЛАНО ПО ПЛЕЙБЕКУ:
+> 1) таймер плеера теперь считается от нативного звука с интерполяцией
+> (_effectivePosition) — не замирает при буферизации видео; полоса
+> прогресса и лейблы от него же; 2) repeat off/all/one: чип в оверлее
+> плеера + ACTION_SET_REPEAT в шторку (STATE_ENDED сам крутит repeat-one
+> и wrap очереди при repeat-all даже без Flutter); автопереход к
+> следующему — нативный skipQueue(+1) по окончании; prev при >3 сек
+> перезапускает трек; кнопки ±N перемотки добавлены в шторку (addAction +
+> custom actions для Android 13+); 3) мини-плеер: быстрый возврат
+> _fastResumeFromMiniPlayer — забирает живой декодер из
+> VideoPlaybackService мгновенно, метаданные фоном (_loadMetaAroundVideo),
+> никакой переэкстракции; 4) ШОРТСЫ переписаны: строго вертикальные через
+> InnerTube поиск с фильтром «Shorts» (params '8gEBGgIgAQ==',
+> shortsLockupViewModel, пагинация continuation — проверено живьём из
+> этого окружения: 65 lockups, страница 2 = 25 шт), kmep_proto fetchSearch
+> получил параметр params (c36a311); ShortsFeedService — алгоритм как у
+> YouTube: источники (подписки ×2, частые каналы ×2, частые запросы, пул
+> тем) round-robin, скоринг (аффинность канала с насыщением, лог
+> просмотров, штраф за уже виденное и за быстро-скипаемые каналы), корзины
+> по 0.5 веса с шаффлом внутри; ShortVideoItem: автопереход по концу
+> (настройка), прогресс-бар с drag-seek обоих контроллеров, двойной тап
+> ±N с burst-анимацией; 5) раздел «Плеер» как Spotify: вкладки
+> Треки/Плейлисты/Загрузки; плейлисты v2 (группы-«папки», createdAt,
+> rename/delete/reorder/sort persistently, миграция со старого формата);
+> PlaylistDetailScreen (коллаж-обложка, «Слушать» -> PlayerScreen c
+> initialQueue: next/prev/автопереход идут по плейлисту, нативная очередь
+> получает корректный index); «В плейлист» из плеера и из трека;
+> 6) медиатека живёт без открытого плеера: PlaybackSessionController
+> держит глобальный onPositionSync (NowPlayingService.tickPosition ->
+> notifyListeners), автопереход локальных треков по концу, prev/next
+> шторки для file:// источников (нативный skipQueue шлёт REQUEST_NEXT/
+> PREVIOUS когда очередь пуста и играет локальный файл); NowPlayingScreen
+> резолвит текущий трек по NowPlayingService каждый кадр; 7) умное
+> качество NetworkQualityService: замер Mbps (качаем кусок maxresdefault
+> с CDN YouTube, отменяем через 2.2 c, считаем байты), кэш 3 мин,
+> single-flight; пороги -> потолок высоты (>=5.5Mbps -> 1080p и т.д.);
+> применяется в «Авто» плеера (чип показывает «Авто·720p»), шортсах
+> (cap min(1080, net)), фоновом превью; 8) BackupService: buildBackup/
+> exportToFile (Documents/Vidora-backups/*.json)/importFrom/importFromFile
+> /importNewPipeSubscriptions; раздел «Данные» в настройках; 9) темы: 9
+> стилей (Фиолетовая ночь, AMOLED, Полночь, Океан, Изумруд, Закат, Роза,
+> Графит, Светлая) через ThemeExtension<VidoraAccent> (accent+headerTop),
+> навбар красится из акцента, слайд-фейд page transitions; настройки:
+> секции «Воспроизведение», «Приватность», «Данные»; 10) чистка: flutter
+> analyze 0 error/warning по всему приложению (впервые), flutter test 15
+> passed; dart test kmep_proto 38 passed. НЕ ПРОВЕРЕНО НА УСТРОЙСТВЕ:
+> реальное поведение всех новых механик (шортс-лента на телефоне, шторка
+> ±N/repeat, бэкап-файлы, темы на AMOLED), CI прогонял только сборку APK.
+>
 > **СЕССИЯ 2026-08-24 (продолжение): язык контента hl/gl сквозным путём +
 > muxed-фолбэк скачивания.** В kmep_proto: InnerTubeClient — ВСЕ методы
 > (player/search/next/browse) принимают hl/gl; ExtractionOrchestrator
