@@ -104,8 +104,10 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
       }
       lastError = null;
       return _tokenCache[binding] = pot;
-    } catch (e) {
-      lastError = '$e';
+    } catch (e, st) {
+      // Стек в lastError: без него деградации вида «String is not a
+      // subtype of Map» невозможно локализовать по логам устройства.
+      lastError = '$e\n$st';
       return null; // деградация без исключения — контракт PoTokenProvider
     }
   }
