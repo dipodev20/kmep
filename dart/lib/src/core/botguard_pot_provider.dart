@@ -35,6 +35,14 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
   /// visitorData конкретного видео для WEB без gvs-эксперимента).
   final Map<String, String> Function()? bindingResolver;
 
+  /// Асинхронный биндинг на видео: приоритетнее [bindingResolver].
+  /// GVS-токен должен быть забинден к visitorData (yt-dlp: «GVS WebPO
+  /// Token is bound to visitor_data when logged out»; videoId-биндинг
+  /// работает только при включённом эксперименте
+  /// html5_generate_content_po_token). Может дёрнуть сеть (watch-страница)
+  /// — кэш на стороне колбэка.
+  final Future<String?> Function(String videoId)? bindingFor;
+
   /// Дополнительные bootstrap-части перед glue (инструментально: jsdom-
   /// окружение для десктопных прогонов). Прод не использует.
   final List<String> Function()? extraBootstrapParts;
@@ -48,6 +56,7 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
     required this.fetchText,
     this.postGenerateItOverride,
     this.bindingResolver,
+    this.bindingFor,
     this.extraBootstrapParts,
     this.pollInterval = const Duration(milliseconds: 100),
     this.stepTimeout = const Duration(seconds: 30),
@@ -90,7 +99,9 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
   }
 
   Future<String?> _tokenForLocked(String videoId) async {
-    final binding = bindingResolver?.call()[videoId] ?? videoId;
+    final binding = (await bindingFor?.call(videoId)) ??
+        bindingResolver?.call()[videoId] ??
+        videoId;
     final cached = _tokenCache[binding];
     if (cached != null) return cached;
     try {

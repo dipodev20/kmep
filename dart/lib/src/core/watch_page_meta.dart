@@ -75,3 +75,24 @@ class HttpWatchPageMetaProvider implements WatchPageMetaProvider {
     }
   }
 }
+
+/// Память на видео: watch-страница стабильна часами, а за одно извлечение
+/// к ней могут обратиться и оркестратор (STS/visitor), и POT-биндинг —
+/// качаем один раз. Пусть провайдер кэширует сам, тогда один инстанс
+/// можно смело шарить между оркестратором и bindingFor.
+class CachedWatchPageMetaProvider implements WatchPageMetaProvider {
+  final WatchPageMetaProvider inner;
+  final Map<String, WatchPageMeta?> _cache = {};
+  final int maxEntries;
+
+  CachedWatchPageMetaProvider(this.inner, {this.maxEntries = 100});
+
+  @override
+  Future<WatchPageMeta?> fetch(String videoId) async {
+    if (_cache.containsKey(videoId)) return _cache[videoId];
+    final meta = await inner.fetch(videoId);
+    if (_cache.length >= maxEntries) _cache.clear();
+    _cache[videoId] = meta;
+    return meta;
+  }
+}

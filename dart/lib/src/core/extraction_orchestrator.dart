@@ -118,16 +118,19 @@ class ExtractionOrchestrator {
           // PO token: нужен requiresPoToken-клиентам (IOS/WEB на части IP).
           final poToken = clientConfig.requiresPoToken ? await _poToken(videoId) : null;
 
-          // STS и visitorData берутся из watch-страницы один раз на видео.
-          // STS нужен browser-клиентам, visitorData — TVHTML5 (needsVisitorData).
+          // Watch-мета теперь для ВСЕХ клиентов: visitorData уходит в
+          // запрос (X-Goog-Visitor-Id + context.client.visitorData) —
+          // паритет с yt-dlp, который шлёт заголовок всегда. Без него
+          // антибот чаще режет запрос бот-чеком, а GVS-токен, забинденный
+          // на visitor, не совпадает с анонимным контекстом запроса.
+          // Кэш провайдера делает fetch одноразовым на видео.
           int? sts;
           String? visitorData;
-          if (clientConfig.needsSignatureTimestamp ||
-              clientConfig.needsVisitorData) {
-            final meta = await _watchMeta(videoId);
-            sts = clientConfig.needsSignatureTimestamp ? meta?.signatureTimestamp : null;
-            visitorData = clientConfig.needsVisitorData ? meta?.visitorData : null;
-          }
+          final meta = await _watchMeta(videoId);
+          sts = clientConfig.needsSignatureTimestamp
+              ? meta?.signatureTimestamp
+              : null;
+          visitorData = meta?.visitorData;
           final raw = await client.fetchPlayer(
             videoId,
             poToken: poToken,

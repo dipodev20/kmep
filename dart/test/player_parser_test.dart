@@ -354,8 +354,9 @@ void main() {
 
       expect(video.videoId, 'vid1');
       expect(video.streams.single.url, 'https://gv.example/direct');
-      // ANDROID_VR не требует STS и cipher-резолва — watch-страница не нужна.
-      expect(meta.calls, 0);
+      // visitor-паритет: watch-мета теперь берётся для всех клиентов
+      // (X-Goog-Visitor-Id в запросе), ровно один fetch благодаря кэшу.
+      expect(meta.calls, 1);
       orchestrator.dispose();
     });
 
