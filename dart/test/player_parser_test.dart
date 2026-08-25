@@ -152,6 +152,20 @@ void main() {
       final cfg = ClientRegistry.byId('DOES_NOT_EXIST');
       expect(cfg.id, 'ANDROID_VR');
     });
+
+    test('VISIONOS: keyless, без POT/STS/visitor — прямые URL без JS',
+        () async {
+      final cfg = ClientRegistry.byId('VISIONOS');
+      expect(cfg.bodyClientName, 'VISIONOS');
+      expect(cfg.headerClientName, '101');
+      expect(cfg.noApiKey, isTrue);
+      expect(cfg.requiresPoToken, isFalse);
+      expect(cfg.needsSignatureTimestamp, isFalse);
+      expect(cfg.needsVisitorData, isFalse);
+      // VISIONOS — первый в дефолтном приоритете (ANDROID_VR 403-ит с
+      // 2026.08.17 по наблюдению yt-dlp).
+      expect(RemoteConfig().clientPriority.first, 'VISIONOS');
+    });
   });
 
   group('InMemoryCacheManager', () {

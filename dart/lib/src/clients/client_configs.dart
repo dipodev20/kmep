@@ -124,6 +124,28 @@ class InnerTubeClientConfig {
 ///
 /// Ключи ниже — ПУБЛИЧНЫЕ InnerTube-константы (не секреты проекта).
 class ClientRegistry {
+  /// VISIONOS — новый дефолт yt-dlp (август 2026): прямые URL без
+  /// player.js и БЕЗ POT, keyless. ANDROID_VR с 2026.08.17 отдаёт 403 на
+  /// все форматы (см. комментарий yt-dlp в конфиге android_vr), поэтому
+  /// visionos стоит первым в приоритете.
+  static const visionos = InnerTubeClientConfig(
+    id: 'VISIONOS',
+    bodyClientName: 'VISIONOS',
+    headerClientName: '101',
+    clientVersion: '1.02',
+    userAgent:
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 '
+        '(KHTML, like Gecko) Version/26.0 Safari/605.1.15',
+    noApiKey: true,
+    maxQuality: '2160p',
+    extraContext: {
+      'deviceMake': 'Apple',
+      'deviceModel': 'RealityDevice17,1',
+      'osName': 'visionOS',
+      'osVersion': '26.5.23O471',
+    },
+  );
+
   static const androidVr = InnerTubeClientConfig(
     id: 'ANDROID_VR',
     bodyClientName: 'ANDROID_VR',
@@ -209,6 +231,7 @@ class ClientRegistry {
   );
 
   static const List<InnerTubeClientConfig> all = [
+    visionos,
     androidVr,
     ios,
     web,

@@ -22,7 +22,7 @@ class RemoteConfig {
   const RemoteConfig({
     this.kmepVersion = '1.0',
     this.clientPriority =
-        const ['ANDROID_VR', 'WEB', 'IOS', 'WEB_SAFARI', 'TV'],
+        const ['VISIONOS', 'ANDROID_VR', 'WEB', 'IOS', 'WEB_SAFARI', 'TV'],
     this.enableEmbeddedYtdlp = true,
     this.backendEndpoint,
     this.backendTimeoutMs = 5000,
