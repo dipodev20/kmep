@@ -275,7 +275,16 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
   Future<Map<String, dynamic>> _readState() async {
     final raw = await _call('__kmepBgState()');
     try {
-      return jsonDecode(raw) as Map<String, dynamic>;
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) return decoded;
+      // Двойное кодирование моста (строка JSON внутри строки JSON):
+      // раскрываем второй слой, как это умеет _decodeResult рантаймов.
+      if (decoded is String) {
+        final inner = jsonDecode(decoded);
+        if (inner is Map<String, dynamic>) return inner;
+      }
+      throw const KMEPException(
+          KMEPErrorCode.potFail, '__kmepBgState: неожиданная форма ответа');
     } on FormatException {
       throw KMEPException(
           KMEPErrorCode.potFail, '__kmepBgState вернул не JSON: $raw');
