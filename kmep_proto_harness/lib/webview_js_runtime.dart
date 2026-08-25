@@ -177,23 +177,34 @@ class WebViewJsRuntime implements JsRuntime {
 
   /// Мост evaluateJavascript возвращает ЛИБО сырую строку (тогда это JSON
   /// от JSON.stringify), ЛИБО уже распарсенный Map (платформа декодирует
-  /// сама) — принимаем обе формы, аномалии показываем текстом.
+  /// сама). Строка может быть дважды закодирована (нативный бридж без
+  /// предварительного декода) — раскрываем слои до объекта, аномалии
+  /// показываем текстом с repr.
   Map<String, dynamic> _decodeResult(dynamic raw, String what, String repr) {
     if (raw is Map) {
       return raw.cast<String, dynamic>();
     }
     if (raw is String && raw.isNotEmpty) {
-      try {
-        return jsonDecode(raw) as Map<String, dynamic>;
-      } on FormatException catch (e) {
-        throw KMEPException(KMEPErrorCode.nsigFail,
-            '$what: бридж вернул не-JSON ($e), сырой ответ: $repr');
+      var current = raw;
+      for (var peel = 0; peel < 4; peel++) {
+        final Object? decoded;
+        try {
+          decoded = jsonDecode(current);
+        } on FormatException catch (e) {
+          throw KMEPException(KMEPErrorCode.nsigFail,
+              '$what: бридж вернул не-JSON ($e), сырой ответ: $repr');
+        }
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is String && decoded.isNotEmpty) {
+          current = decoded;
+          continue;
+        }
+        break;
       }
-    }
-    throw KMEPException(
-      KMEPErrorCode.nsigFail,
-      '$what: неожиданный ответ моста (${raw.runtimeType}), сырой ответ: $repr',
-    );
+      throw KMEPException(
+        KMEPErrorCode.nsigFail,
+        '$what: после раскрытия слоёв не объект, сырой ответ: $repr',
+      );
   }
 
   @override

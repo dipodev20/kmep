@@ -214,19 +214,35 @@ class WebViewJsRuntime implements JsRuntime {
     return (raw, repr);
   }
 
-  /// _evalRaw + декод в Map + громкие ошибки с repr.
+  /// _evalRaw + декод в Map + громкие ошибки с repr. Строковый результат
+  /// может приходить дважды закодированным (нативный бридж без
+  /// предварительного декода) — раскрываем слои до объекта.
   Future<Map<String, dynamic>> _evalStructured(String src, String what) async {
     final (raw, repr) = await _evalRaw(src);
     if (raw is Map) {
       return raw.cast<String, dynamic>();
     }
     if (raw is String && raw.isNotEmpty) {
-      try {
-        return jsonDecode(raw) as Map<String, dynamic>;
-      } on FormatException catch (e) {
-        throw KMEPException(KMEPErrorCode.nsigFail,
-            '$what: бридж вернул не-JSON ($e), сырой ответ: $repr');
+      var current = raw;
+      for (var peel = 0; peel < 4; peel++) {
+        final Object? decoded;
+        try {
+          decoded = jsonDecode(current);
+        } on FormatException catch (e) {
+          throw KMEPException(KMEPErrorCode.nsigFail,
+              '$what: бридж вернул не-JSON ($e), сырой ответ: $repr');
+        }
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is String && decoded.isNotEmpty) {
+          current = decoded;
+          continue;
+        }
+        break;
       }
+      throw KMEPException(
+        KMEPErrorCode.nsigFail,
+        '$what: после раскрытия слоёв не объект, сырой ответ: $repr',
+      );
     }
     throw KMEPException(
       KMEPErrorCode.nsigFail,

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import '../webview_js_runtime.dart';
 import 'package:kmep_proto/kmep.dart';
@@ -56,6 +58,24 @@ void main() {
       {'ok': true}, // bootstrap-часть (Map-форма)
       envOkJson,
       '{"ok":true,"v":"X","t":"String"}',
+    ]);
+    final rt = runtimeWith(b);
+
+    await rt.bootstrapParts(['P']);
+    expect(await rt.call('E'), 'X');
+  });
+
+  test('дважды закодированный JSON моста — раскрываем слои (нативный бридж '
+      'Android не декодирует сам)', () async {
+    final b = FakeBridge();
+    // Нативный evaluateJavascript сериализует строковый результат ВМЕСТЕ с
+    // кавычками: Dart получает '"{\"ok\":true}"'. Без раскрытия слоёв
+    // jsonDecode даёт String и жёсткий каст ронял весь бутстрап (POT,
+    // player.js) с «String is not a subtype of Map».
+    b.results.addAll([
+      jsonEncode('{"ok":true}'), // bootstrap-часть, двойное кодирование
+      jsonEncode(envOkJson), // envSnapshot, тоже двойной
+      jsonEncode('{"ok":true,"v":"X","t":"String"}'),
     ]);
     final rt = runtimeWith(b);
 
