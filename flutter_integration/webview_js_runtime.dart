@@ -109,7 +109,14 @@ class WebViewJsRuntime implements JsRuntime {
     // Сравнение строк с 'missing' здесь недопустимо: мусорный '' проходил
     // бы как ложный PASS (грабли v11).
     final env = await envSnapshot();
-    if (env['fn'] != 'function') {
+    // Чек fn — ТОЛЬКО для player.js-бутстрапа (маркер — коллектор
+    // __closureFns). BotGuardJsPoTokenProvider бутстрапит клей/интерпретатор
+    // BotGuard в тот же класс рантайма: __kmepResolveFn там взяться
+    // неоткуда, и былой безусловный чек ронял КАЖДЫЙ POT-минтинг с
+    // nsigFail -> токен всегда null -> ANDROID_VR под бот-чеком YouTube
+    // (на десктопе NodeProcessJsRuntime чека не имеет — потому e2e прошёл).
+    final isPlayerBootstrap = parts.any((p) => p.contains('__closureFns'));
+    if (isPlayerBootstrap && env['fn'] != 'function') {
       final fns = env['fns'];
       final reason = fns == 0
           ? 'коллектор не выгрузил ни одной функции из IIFE '

@@ -115,7 +115,12 @@ class WebViewJsRuntime implements JsRuntime {
     // ('') проходил как ложный PASS. Теперь проверяем структуру и падаем
     // с точным диагнозом.
     final env = await envSnapshot();
-    if (env['fn'] != 'function') {
+    // Чек fn — ТОЛЬКО для player.js-бутстрапа (маркер — коллектор
+    // __closureFns). Стадия D (BotGuard) бутстрапит тот же класс рантайма
+    // без всякого player.js: безусловный чек ронял POT-минтинг на устройстве
+    // (на десктопе NodeProcessJsRuntime чека не имеет — потому e2e и прошёл).
+    final isPlayerBootstrap = parts.any((p) => p.contains('__closureFns'));
+    if (isPlayerBootstrap && env['fn'] != 'function') {
       final fns = env['fns'];
       final reason = fns == 0
           ? 'коллектор не выгрузил ни одной функции из IIFE '

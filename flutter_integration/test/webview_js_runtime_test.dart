@@ -37,7 +37,7 @@ void main() {
     ]);
     final rt = runtimeWith(b);
 
-    await rt.bootstrapParts(['PREPARED_PLAYER+DISCOVERY']);
+    await rt.bootstrapParts(['PREPARED_PLAYER+__closureFns+DISCOVERY']);
     final out = await rt.call('RESOLVE_EXPR');
 
     expect(out, 'RESOLVED_URL');
@@ -47,7 +47,7 @@ void main() {
     expect(b.sources.last.contains('(function(){RESOLVE_EXPR'), isFalse);
     // bootstrap-часть ушла через indirect eval с jsonEncode.
     expect(b.sources.first, contains('(0,eval)'));
-    expect(b.sources.first, contains('"PREPARED_PLAYER+DISCOVERY"'));
+    expect(b.sources.first, contains('"PREPARED_PLAYER+__closureFns+DISCOVERY"'));
   });
 
   test('мост вернул уже распарсенный Map — принимаем', () async {
@@ -74,7 +74,7 @@ void main() {
     final rt = runtimeWith(b);
 
     await expectLater(
-      rt.bootstrapParts(['P']),
+      rt.bootstrapParts(['PLAYER+__closureFns']),
       throwsA(isA<KMEPException>()
           .having((e) => e.message, 'message', contains('коллектор'))),
     );
@@ -92,10 +92,30 @@ void main() {
     final rt = runtimeWith(b);
 
     await expectLater(
-      rt.bootstrapParts(['P']),
+      rt.bootstrapParts(['PLAYER+__closureFns']),
       throwsA(isA<KMEPException>().having(
           (e) => e.message, 'message', contains('не выбрал кандидата'))),
     );
+  });
+
+  test('POT-бутстрап (без коллектора player.js): fn-чек не применяется',
+      () async {
+    // BotGuardJsPoTokenProvider бутстрапит клей/интерпретатор BotGuard в
+    // ТОТ ЖЕ класс рантайма: __kmepResolveFn там появиться неоткуда.
+    // Безусловный чек ронял каждый POT-минтинг (токен всегда null ->
+    // ANDROID_VR под бот-чеком). Регресс-тест: env с fn=undefined, но
+    // echo живой -> бутстрап проходит.
+    final b = FakeBridge();
+    b.results.addAll([
+      '{"ok":true}',
+      envOkJson.replaceFirst('"fns":4090', '"fns":0')
+          .replaceFirst('"fn":"function"', '"fn":"undefined"')
+          .replaceFirst('"fnName":"ji"', '"fnName":""'),
+    ]);
+    final rt = runtimeWith(b);
+
+    await rt.bootstrapParts(['__kmepBgGlue+envPart+interpJs']);
+    expect(b.sources, hasLength(2));
   });
 
   test('call до bootstrap запрещён', () async {
