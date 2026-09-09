@@ -16,9 +16,10 @@ jobs:
       - uses: Platane/snk@v3
         id: snake
         with:
-          github_user: dipodev20
-          svg_out_path: dist/github-contribution-grid-snake.svg
-          dark_svg_out_path: dist/github-contribution-grid-snake-dark.svg
+          github_user_name: dipodev20
+          outputs: |
+            dist/github-contribution-grid-snake.svg
+            dist/github-contribution-grid-snake-dark.svg?palette=github-dark
 
       - uses: crazy-max/ghaction-github-pages@v4
         with:
