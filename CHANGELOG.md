@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.3.0 — Channels, playlists, comments
+
+The three big "not yet" items from 0.2.0 are done. All of them ride
+the unauthenticated InnerTube WEB client (same as search — no JS
+runtime, no PO token, no player.js), so they work on every platform
+KMEP runs on, including plain Dart servers.
+
+### Added
+- **Channels** (`lib/src/channel/channel_client.dart`): full header
+  metadata (title, handle, avatar, banner, subscriber/video counts,
+  description, social links, available tabs) plus the Videos tab with
+  pagination. Handles YouTube's current `pageHeaderViewModel` header
+  shape and both the legacy `gridVideoRenderer` and current
+  `lockupViewModel` video cards. Tab/sort params exported as constants
+  (`kChannelVideosTabNewest/Popular/Oldest`, `kChannelShortsTab`,
+  `kChannelLiveTab`).
+- **Playlists**: header (title, owner, video count, view count, last
+  updated) + videos with pagination, via the `VL...` browse id.
+  Continuation handling picks the *first* token found — playlists
+  carry two, and the trailing one is a signal-only stub that returns
+  an empty page (found the hard way, live).
+- **Comments** (`lib/src/comments/`): `/next`-based extraction with
+  top/newest sort, page continuation, and per-thread replies
+  continuation. Parses the current `commentViewModel` +
+  `frameworkUpdates.entityBatchUpdate` data model (author, text,
+  likes, reply count, pinned, creator-hearted, verified), including
+  the A/B shape where `commentViewModel` arrives double-wrapped;
+  falls back to the legacy `commentRenderer` shape. `CommentInfo`
+  grew `isVerifiedAuthor` and `repliesContinuation`.
+- `Kmep` facade methods for all of the above: `getChannel`,
+  `getChannelVideos`, `getPlaylist`, `getPlaylistVideos`, `getComments`,
+  `getCommentsByContinuation`, `getCommentReplies`.
+- New models: `ChannelVideosPage`, `PlaylistInfo`, `PlaylistVideosPage`,
+  `CommentsPage`; `KMEPErrorCode.playlistUnavailable`.
+- Live-response fixtures (`test/fixtures/`) and 6 new unit tests —
+  53 total, all green.
+- `example/example.dart` now demonstrates the full surface end-to-end.
+
 ## 0.2.0 — Public API pass
 
 This release turns the internal prototype into something meant to be
@@ -53,9 +91,8 @@ GPLv3 too. Taking this code, renaming it and shipping it as a
 closed-source "own" extractor is a copyright violation.
 
 ### Known gaps (tracked, not yet implemented)
-- No channel or playlist extraction — `ChannelInfo` exists as a model
-  but nothing populates it yet.
-- No comments support (`CommentInfo` is a placeholder model).
+- ~~No channel or playlist extraction~~ — **done in 0.3.0**.
+- ~~No comments support~~ — **done in 0.3.0**.
 - YouTube only — there is no NewPipe-style `StreamingService`
   abstraction for other sites. Multi-site support would be a 1.0-scope
   change, not a patch on top of this API.

@@ -107,6 +107,7 @@ class ChannelInfo {
   final String description;
   final List<String> links;
   final List<String> tabs;
+  final String? primaryLinkId;
 
   const ChannelInfo({
     required this.channelId,
@@ -119,7 +120,61 @@ class ChannelInfo {
     this.banner,
     this.subscriberCount,
     this.videoCount,
+    this.primaryLinkId,
   });
+}
+
+/// One page of a channel's video tab (or shorts/live tab). Videos come
+/// as lightweight [VideoSearchResult] cards; [continuation] paginates.
+class ChannelVideosPage {
+  final List<VideoSearchResult> videos;
+  final String? continuation;
+  const ChannelVideosPage({required this.videos, this.continuation});
+}
+
+/// A YouTube playlist: header metadata plus the first page of videos.
+/// Paginate the item list with [continuation].
+class PlaylistInfo {
+  final String playlistId;
+  final String title;
+  final String description;
+  final String channelId;
+  final String channelName;
+  final String? channelAvatarUrl;
+  final int videoCount;
+  final String viewCountText;
+  final List<VideoSearchResult> videos;
+  final String? continuation;
+
+  const PlaylistInfo({
+    required this.playlistId,
+    required this.title,
+    required this.description,
+    required this.channelId,
+    required this.channelName,
+    required this.videoCount,
+    required this.viewCountText,
+    required this.videos,
+    this.channelAvatarUrl,
+    this.continuation,
+  });
+}
+
+/// One page of a playlist's videos, as lightweight cards.
+class PlaylistVideosPage {
+  final List<VideoSearchResult> videos;
+  final String? continuation;
+  const PlaylistVideosPage({required this.videos, this.continuation});
+}
+
+/// One page of comments for a video. [items] are top-level threads;
+/// each thread's [CommentInfo.replies] contains the first batch of
+/// replies YouTube sends inline (often empty until you fetch the
+/// replies continuation — see [CommentInfo.repliesContinuation]).
+class CommentsPage {
+  final List<CommentInfo> items;
+  final String? continuation;
+  const CommentsPage({required this.items, this.continuation});
 }
 
 class CommentInfo {
@@ -132,8 +187,14 @@ class CommentInfo {
   final int replyCount;
   final bool isHearted;
   final bool isPinned;
+  final bool isVerifiedAuthor;
   final String? publishedTime;
   final List<CommentInfo> replies;
+
+  /// Opaque continuation token to fetch MORE replies for this thread —
+  /// pass it to `Kmep.getCommentReplies`. Null when YouTube sent all
+  /// replies inline (or there are none).
+  final String? repliesContinuation;
 
   const CommentInfo({
     required this.commentId,
@@ -145,8 +206,10 @@ class CommentInfo {
     this.authorAvatar,
     this.isHearted = false,
     this.isPinned = false,
+    this.isVerifiedAuthor = false,
     this.publishedTime,
     this.replies = const [],
+    this.repliesContinuation,
   });
 }
 
@@ -214,6 +277,7 @@ enum KMEPErrorCode {
   rateLimited,
   networkError,
   parseError,
+  playlistUnavailable,
 }
 
 class KMEPException implements Exception {

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="branding/logo.png" width="200" alt="KMEP logo" />
+  <img src="branding/cover.png" width="640" alt="KMEP — YouTube extraction for Dart" />
 </p>
 
 # KMEP
@@ -9,7 +9,7 @@
     <img src="https://github.com/dipodev20/vidora-kmep-proto/actions/workflows/dart_ci.yml/badge.svg" alt="Dart CI" />
   </a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-blue.svg" alt="License: GPLv3" /></a>
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.2.0-orange.svg" alt="Version 0.2.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.3.0-orange.svg" alt="Version 0.3.0" /></a>
   <a href="https://www.dart.dev"><img src="https://img.shields.io/badge/platform-Dart%20%7C%20Flutter-0175C2.svg" alt="Platform: Dart / Flutter" /></a>
 </p>
 
@@ -32,6 +32,9 @@ final video = await kmep.getVideo('dQw4w9WgXcQ');
 print('${video.title} — ${video.streams.length} streams');
 
 final results = await kmep.search('lofi hip hop');
+final channel = await kmep.getChannel('UC-lHJZR3Gqxm24_Vd_AJ5Yw');
+final playlist = await kmep.getPlaylist('PLFgquLnL59aCl_2TQvOiD5Vgm1hCaGSI');
+final comments = await kmep.getComments('dQw4w9WgXcQ');
 ```
 
 ## Status
@@ -62,8 +65,10 @@ settles; that rename is tracked, not done silently.
 | Search | done |
 | Shorts feed | done |
 | Live streams / HLS | done (single muxed stream, as YouTube serves it) |
-| Channels, playlists | not yet |
-| Comments | not yet |
+| Channels (header, tabs, videos with pagination) | done |
+| Playlists (header, videos with pagination) | done |
+| Comments (top/newest sort, pages, thread replies) | done |
+| Channel shorts/live tabs | done (params exported, same `getChannelVideos` call) |
 | Sites other than YouTube | out of scope for now (see below) |
 
 ## Why not just use NewPipeExtractor?
@@ -83,6 +88,33 @@ dependencies:
     git:
       url: https://github.com/dipodev20/vidora-kmep-proto
       path: dart
+```
+
+## Beyond videos: channels, playlists, comments
+
+Everything below rides the same InnerTube WEB client — no JS runtime, no
+PO token, fully paginated:
+
+```dart
+// Channels: header (name, handle, avatar, banner, subs, videos,
+// description, links, tabs) and the Videos tab with pagination.
+final channel = await kmep.getChannel('UC-lHJZR3Gqxm24_Vd_AJ5Yw');
+final page = await kmep.getChannelVideos(channel.channelId);
+// ... page.continuation -> next page; kChannelShortsTab /
+// kChannelLiveTab params swap the tab (newest/popular/oldest sorts
+// are exported too).
+
+// Playlists: header + first page of videos (accepts a bare PL... id
+// or a full watch URL).
+final playlist = await kmep.getPlaylist('PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI');
+final rest = await kmep.getPlaylistVideos(
+    playlist.playlistId, playlist.continuation!);
+
+// Comments: top/newest ordering, pagination, and thread replies
+// (each thread carries its own repliesContinuation).
+final comments = await kmep.getComments('dQw4w9WgXcQ');
+final thread = comments.items.first; // pinned + hearted out of the box
+final replies = await kmep.getCommentReplies(thread.repliesContinuation!);
 ```
 
 ## Platform integration

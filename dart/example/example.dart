@@ -66,13 +66,50 @@ Future<void> main(List<String> args) async {
       stderr.writeln('PO token diagnostic: $lastPotError');
     }
     exitCode = 1;
-    return;
   }
 
   print('\nSearching "lofi hip hop" ...');
   final results = await kmep.search('lofi hip hop');
-  for (final r in results.results.take(5)) {
+  for (final r in results.results.take(3)) {
     print(
         '  ${r.videoId}  ${r.title}  (${r.durationSeconds}s, ${r.viewCount} views)');
   }
+
+  print('\nChannel UC-lHJZR3Gqxm24_Vd_AJ5Yw (PewDiePie) ...');
+  final channel = await kmep.getChannel('UC-lHJZR3Gqxm24_Vd_AJ5Yw');
+  print('  ${channel.name} (${channel.handle}), '
+      '${channel.subscriberCount} subs, ${channel.videoCount} videos');
+
+  print('\nChannel videos (first 3) ...');
+  final channelVideos = await kmep.getChannelVideos('UC-lHJZR3Gqxm24_Vd_AJ5Yw');
+  for (final v in channelVideos.videos.take(3)) {
+    print('  ${v.videoId}  ${v.title}  (${v.durationSeconds}s)');
+  }
+
+  print('\nPlaylist PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI ...');
+  final playlist = await kmep.getPlaylist('PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI');
+  print('  "${playlist.title}" by ${playlist.channelName} — '
+      '${playlist.videoCount} videos (got ${playlist.videos.length})');
+
+  print('\nComments for $videoId (top 3) ...');
+  final comments = await kmep.getComments(videoId);
+  for (final c in comments.items.take(3)) {
+    final pin = c.isPinned ? ' [pinned]' : '';
+    print('  [${c.authorName}]$pin ${c.text}  (${c.likeCount} likes, '
+        '${c.replyCount} replies)');
+  }
+  final withReplies =
+      comments.items.where((c) => c.repliesContinuation != null).firstOrNull;
+  if (withReplies != null) {
+    print('  Replies to [${withReplies.authorName}] ...');
+    final replies =
+        await kmep.getCommentReplies(withReplies.repliesContinuation!);
+    for (final r in replies.items.take(3)) {
+      print('    [${r.authorName}] ${r.text}  (${r.likeCount} likes)');
+    }
+  }
+}
+
+extension<T> on Iterable<T> {
+  T? get firstOrNull => isEmpty ? null : first;
 }

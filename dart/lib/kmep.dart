@@ -38,13 +38,32 @@ export 'src/models/kmep_models.dart'
         VideoSearchResult,
         SearchResultPage,
         ChannelInfo,
+        ChannelVideosPage,
+        PlaylistInfo,
+        PlaylistVideosPage,
         CommentInfo,
+        CommentsPage,
         KMEPErrorCode,
         KMEPException;
 
 // ---- Search / shorts feed -------------------------------------------------
 export 'src/search/search_client.dart'
     show SearchClient, ShortsFeedPage, kShortsSearchParams;
+
+// ---- Channels / playlists -------------------------------------------------
+export 'src/channel/channel_client.dart'
+    show
+        ChannelClient,
+        kChannelVideosTabNewest,
+        kChannelVideosTabPopular,
+        kChannelVideosTabOldest,
+        kChannelShortsTab,
+        kChannelLiveTab;
+
+// ---- Comments ---------------------------------------------------------------
+export 'src/comments/comment_client.dart' show CommentClient, CommentSort;
+export 'src/comments/comment_parser.dart'
+    show parseCommentsPage, findCommentSectionTokens;
 
 // ---- Platform integration points (implement these on new platforms) ------
 export 'src/resolvers/stream_resolver.dart'

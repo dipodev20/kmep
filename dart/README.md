@@ -34,6 +34,8 @@ lib/
     ├── kmep_client.dart   # the Kmep facade
     ├── models/            # VideoInfo, KMEPStream, VideoSearchResult, ...
     ├── search/            # search + shorts feed
+    ├── channel/           # channels + playlists (browse endpoint)
+    ├── comments/          # comments + thread replies (next endpoint)
     ├── clients/           # InnerTube client + per-client configs
     ├── parsers/           # player response parsing
     ├── resolvers/         # signature/n-parameter resolution (player.js)

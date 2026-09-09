@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import 'channel/channel_client.dart';
+import 'comments/comment_client.dart';
 import 'core/botguard_pot_provider.dart';
 import 'core/cache_manager.dart';
 import 'core/extraction_orchestrator.dart';
@@ -147,5 +149,68 @@ class Kmep {
     return client
         .shortsFeed(query: query, continuation: continuation)
         .whenComplete(client.close);
+  }
+
+  /// Full channel metadata (title, handle, avatar, banner, subscriber /
+  /// video counts, description, social links, available tabs).
+  /// Accepts a `UC...` id or an `@handle`. No JS runtime or PO token
+  /// needed — plain InnerTube `/browse`.
+  Future<ChannelInfo> getChannel(String channelId) {
+    final client = ChannelClient(hl: hl, gl: gl);
+    return client.getChannel(channelId).whenComplete(client.close);
+  }
+
+  /// One page of a channel's Videos tab (newest first by default; see
+  /// [ChannelClient] for other sort params). [continuation] paginates.
+  Future<ChannelVideosPage> getChannelVideos(
+    String channelId, {
+    String? continuation,
+    String params = kChannelVideosTabNewest,
+  }) {
+    final client = ChannelClient(hl: hl, gl: gl);
+    return client
+        .getChannelVideos(channelId, continuation: continuation, params: params)
+        .whenComplete(client.close);
+  }
+
+  /// A playlist's metadata plus its first page of videos. [playlistId]
+  /// can be a bare `PL...` id or a full watch URL with `list=`.
+  Future<PlaylistInfo> getPlaylist(String playlistId) {
+    final client = ChannelClient(hl: hl, gl: gl);
+    return client.getPlaylist(playlistId).whenComplete(client.close);
+  }
+
+  /// Next page of a playlist's videos (continuation from [getPlaylist]
+  /// or a previous call to this).
+  Future<PlaylistVideosPage> getPlaylistVideos(
+      String playlistId, String continuation) {
+    final client = ChannelClient(hl: hl, gl: gl);
+    return client
+        .getPlaylistVideos(playlistId, continuation)
+        .whenComplete(client.close);
+  }
+
+  /// First page of comments for a video. [sort] picks "top" (default)
+  /// or "newest" ordering. No JS runtime or PO token needed.
+  Future<CommentsPage> getComments(String videoId,
+      {CommentSort sort = CommentSort.top}) {
+    final client = CommentClient(hl: hl, gl: gl);
+    return client.getComments(videoId, sort: sort).whenComplete(client.close);
+  }
+
+  /// Next page of comments (continuation from a previous [CommentsPage]).
+  Future<CommentsPage> getCommentsByContinuation(String continuation) {
+    final client = CommentClient(hl: hl, gl: gl);
+    return client
+        .getCommentsByContinuation(continuation)
+        .whenComplete(client.close);
+  }
+
+  /// Replies for one comment thread — the continuation comes from
+  /// [CommentInfo.repliesContinuation] of a thread returned by
+  /// [getComments].
+  Future<CommentsPage> getCommentReplies(String repliesContinuation) {
+    final client = CommentClient(hl: hl, gl: gl);
+    return client.getReplies(repliesContinuation).whenComplete(client.close);
   }
 }

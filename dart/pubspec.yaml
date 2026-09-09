@@ -5,7 +5,7 @@ description: >
   on-device PO token (BotGuard) generation, search and shorts feed.
   Public API is the Kmep facade class (see lib/kmep.dart). Package name
   is kmep_proto for now (pre-1.0, API not yet stable) — see CHANGELOG.md.
-version: 0.2.0
+version: 0.3.0
 publish_to: 'none'
 homepage: https://github.com/dipodev20/vidora-kmep-proto
 repository: https://github.com/dipodev20/vidora-kmep-proto
