@@ -1,0 +1,22 @@
+name: Dart CI
+
+on:
+  push:
+    paths: ['dart/**', '.github/workflows/dart_ci.yml']
+  pull_request:
+    paths: ['dart/**', '.github/workflows/dart_ci.yml']
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dart
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - run: dart pub get
+      - run: dart analyze
+      - run: dart test

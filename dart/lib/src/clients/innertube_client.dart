@@ -1,3 +1,19 @@
+// KMEP — a from-scratch YouTube extraction library for Dart.
+// Copyright (C) 2026 dipodev20
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -12,7 +28,8 @@ class InnerTubeClient {
   final http.Client _http;
   final Duration timeout;
 
-  InnerTubeClient(this.config, {http.Client? httpClient, this.timeout = const Duration(seconds: 8)})
+  InnerTubeClient(this.config,
+      {http.Client? httpClient, this.timeout = const Duration(seconds: 8)})
       : _http = httpClient ?? http.Client();
 
   Future<Map<String, dynamic>> fetchPlayer(
@@ -47,16 +64,25 @@ class InnerTubeClient {
       {String? continuation, String hl = 'en', String gl = 'US'}) async {
     final body = {
       'context': config.buildContext(hl: hl, gl: gl),
-      if (continuation != null) 'continuation': continuation else 'videoId': videoId,
+      if (continuation != null)
+        'continuation': continuation
+      else
+        'videoId': videoId,
     };
     return _post(config.nextEndpoint(), body, 'next');
   }
 
   Future<Map<String, dynamic>> fetchBrowse(String browseId,
-      {String? params, String? continuation, String hl = 'en', String gl = 'US'}) async {
+      {String? params,
+      String? continuation,
+      String hl = 'en',
+      String gl = 'US'}) async {
     final body = {
       'context': config.buildContext(hl: hl, gl: gl),
-      if (continuation != null) 'continuation': continuation else 'browseId': browseId,
+      if (continuation != null)
+        'continuation': continuation
+      else
+        'browseId': browseId,
       if (params != null) 'params': params,
     };
     return _post(config.browseEndpoint(), body, 'browse');
@@ -65,7 +91,10 @@ class InnerTubeClient {
   /// [params] — InnerTube-фильтры поиска в protobuf-base64 (например
   /// '8gEBGgIgAQ==' = только шортсы, как чип «Shorts» в поиске YouTube).
   Future<Map<String, dynamic>> fetchSearch(String query,
-      {String? continuation, String? params, String hl = 'en', String gl = 'US'}) async {
+      {String? continuation,
+      String? params,
+      String hl = 'en',
+      String gl = 'US'}) async {
     final body = {
       'context': config.buildContext(hl: hl, gl: gl),
       if (continuation != null)
@@ -94,7 +123,8 @@ class InnerTubeClient {
           .timeout(timeout);
 
       if (resp.statusCode == 429) {
-        throw KMEPException(KMEPErrorCode.rateLimited, 'Rate limited on $op', clientId: config.id);
+        throw KMEPException(KMEPErrorCode.rateLimited, 'Rate limited on $op',
+            clientId: config.id);
       }
       if (resp.statusCode != 200) {
         throw KMEPException(
@@ -107,7 +137,8 @@ class InnerTubeClient {
     } on KMEPException {
       rethrow;
     } catch (e) {
-      throw KMEPException(KMEPErrorCode.networkError, 'Request failed: $e', clientId: config.id, cause: e);
+      throw KMEPException(KMEPErrorCode.networkError, 'Request failed: $e',
+          clientId: config.id, cause: e);
     }
   }
 

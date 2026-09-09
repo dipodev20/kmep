@@ -1,0 +1,10 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  errors:
+    # Doc comments here link to types across files by design (dartdoc
+    # cross-references); the plain analyzer doesn't need to enforce that.
+    # (Recognized by newer analyzer versions; older ones warn about the
+    # code itself — harmless either way, but silenced below for CI parity
+    # across Dart versions.)
+    unrecognized_error_code: ignore

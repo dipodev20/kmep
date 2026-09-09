@@ -93,8 +93,9 @@ enum Outcome { ok, botCheck, noStreams, apiRejected, rateLimited, urlRejected, o
 
 Outcome classify(String combined) {
   if (combined.contains('Sign in to confirm')) return Outcome.botCheck;
-  if (combined.contains('No streams from') ||
-      combined.contains('SABR')) return Outcome.noStreams;
+  if (combined.contains('No streams from') || combined.contains('SABR')) {
+    return Outcome.noStreams;
+  }
   if (combined.contains('HTTP 400') || combined.contains('FAILED_PRECONDITION')) {
     return Outcome.apiRejected;
   }
@@ -127,7 +128,7 @@ Future<void> main(List<String> args) async {
 
   final sample = fromFile ?? await buildSample(targetSize);
   final potMode = potHttpUrl != null
-      ? 'HTTP-сервер ${potHttpUrl}'
+      ? 'HTTP-сервер $potHttpUrl'
       : potScriptPath != null
           ? 'скрипт $potScriptPath'
           : 'выкл';

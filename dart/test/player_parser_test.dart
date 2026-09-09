@@ -1,3 +1,19 @@
+// KMEP — a from-scratch YouTube extraction library for Dart.
+// Copyright (C) 2026 dipodev20
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -76,7 +92,8 @@ void main() {
 
       expect(
         () => PlayerParser.parse(response, fallbackVideoId: 'x'),
-        throwsA(isA<KMEPException>().having((e) => e.code, 'code', KMEPErrorCode.unavailable)),
+        throwsA(isA<KMEPException>()
+            .having((e) => e.code, 'code', KMEPErrorCode.unavailable)),
       );
     });
 
@@ -185,7 +202,8 @@ void main() {
   group('StreamResolver', () {
     const fakePlayerJs = '(function(g){})(_yt_player);';
 
-    test('cipher format goes through player.js with sp/s, direct clean url does not',
+    test(
+        'cipher format goes through player.js with sp/s, direct clean url does not',
         () async {
       final js = _FakeJsRuntime([
         'https://resolved.example/cipher',
@@ -224,11 +242,13 @@ void main() {
       // Только первые два формата требуют вызова player.js.
       expect(js.expressions.length, 2);
       // Первый вызов несёт параметры из signatureCipher.
-      expect(js.expressions[0], contains('"https://gv.example/v?n=AAAAAAAAAAAAAAAA"'));
+      expect(js.expressions[0],
+          contains('"https://gv.example/v?n=AAAAAAAAAAAAAAAA"'));
       expect(js.expressions[0], contains('"sig"'));
       expect(js.expressions[0], contains('"CIPHERTEXT"'));
       // Второй — прямой URL без подписи, пустые sig-параметры.
-      expect(js.expressions[1], contains('"https://gv.example/v2?n=BBBBBBBBBBBBBBBB"'));
+      expect(js.expressions[1],
+          contains('"https://gv.example/v2?n=BBBBBBBBBBBBBBBB"'));
       expect(js.expressions[1], contains('""'));
 
       expect(streams.length, 3);
@@ -264,7 +284,8 @@ void main() {
             'url': 'https://gv.example/v?n=AAAAAAAAAAAAAAAA',
           }
         ], playerJsUrl: 'https://example/player.js'),
-        throwsA(isA<KMEPException>().having((e) => e.code, 'code', KMEPErrorCode.nsigFail)),
+        throwsA(isA<KMEPException>()
+            .having((e) => e.code, 'code', KMEPErrorCode.nsigFail)),
       );
     });
 
@@ -283,7 +304,8 @@ void main() {
             'url': 'https://gv.example/v?n=AAAAAAAAAAAAAAAA',
           }
         ], playerJsUrl: 'https://example/player.js'),
-        throwsA(isA<KMEPException>().having((e) => e.code, 'code', KMEPErrorCode.nsigFail)),
+        throwsA(isA<KMEPException>()
+            .having((e) => e.code, 'code', KMEPErrorCode.nsigFail)),
       );
     });
   });
@@ -349,7 +371,8 @@ void main() {
         () async {
       final bodies = <Map<String, dynamic>>[];
       final meta = _FakeMetaProvider(
-        meta: const WatchPageMeta(signatureTimestamp: 20683, playerJsUrl: 'https://example/base.js'),
+        meta: const WatchPageMeta(
+            signatureTimestamp: 20683, playerJsUrl: 'https://example/base.js'),
       );
       final js = _FakeJsRuntime(['https://resolved.example/final']);
       final orchestrator = buildOrchestrator(
@@ -366,7 +389,8 @@ void main() {
 
       expect(video.streams.single.url, 'https://resolved.example/final');
       expect(
-        bodies.single['playbackContext']['contentPlaybackContext']['signatureTimestamp'],
+        bodies.single['playbackContext']['contentPlaybackContext']
+            ['signatureTimestamp'],
         20683,
       );
       expect(js.bootstrapCount, 1);
@@ -376,14 +400,18 @@ void main() {
       orchestrator.dispose();
     });
 
-    test('meta недоступна для WEB -> UNPLAYABLE без STS -> unavailable', () async {
+    test('meta недоступна для WEB -> UNPLAYABLE без STS -> unavailable',
+        () async {
       final meta = _FakeMetaProvider(fail: true);
       final orchestrator = buildOrchestrator(
         clientPriority: const ['WEB'],
         responder: (req) => req.body.contains('signatureTimestamp')
             ? _cipherResponse()
             : {
-                'playabilityStatus': {'status': 'UNPLAYABLE', 'reason': 'STS needed'},
+                'playabilityStatus': {
+                  'status': 'UNPLAYABLE',
+                  'reason': 'STS needed'
+                },
               },
         metaProvider: meta,
         jsRuntime: _FakeJsRuntime([]),
@@ -391,7 +419,8 @@ void main() {
 
       await expectLater(
         orchestrator.fetchVideo('vid1'),
-        throwsA(isA<KMEPException>().having((e) => e.code, 'code', KMEPErrorCode.unavailable)),
+        throwsA(isA<KMEPException>()
+            .having((e) => e.code, 'code', KMEPErrorCode.unavailable)),
       );
       orchestrator.dispose();
     });
@@ -488,8 +517,7 @@ void main() {
       orchestrator.dispose();
     });
 
-    test('ClientRegistry.resolved: неизвестные ключи и чужие id безопасны',
-        () {
+    test('ClientRegistry.resolved: неизвестные ключи и чужие id безопасны', () {
       final cfg = ClientRegistry.resolved(
         'IOS',
         overrides: {
@@ -554,7 +582,8 @@ void main() {
       final video = await orchestrator.fetchVideo('vid1');
 
       // IOS requiresPoToken=true -> токен и в теле player-запроса...
-      expect(bodies.single['serviceIntegrityDimensions']['poToken'], 'TOKEN123');
+      expect(
+          bodies.single['serviceIntegrityDimensions']['poToken'], 'TOKEN123');
       // ...и параметром pot= в googlevideo-URL (после резолва n).
       expect(video.streams.single.url.endsWith('&pot=TOKEN123'), isTrue);
       orchestrator.dispose();
@@ -667,7 +696,7 @@ void main() {
       final dir = await Directory.systemTemp.createTemp('kmep_pot_test_');
       final script = File('${dir.path}/generate_once.js');
       await script.writeAsString(
-        '#!/bin/sh\necho "шум в stdout"\necho \'{\"contentBinding\":\"vid1\",\"poToken\":\"TOK123\",\"expiresAt\":\"2030-01-01T00:00:00Z\"}\'\n',
+        "#!/bin/sh\necho \"шум в stdout\"\necho '{\"contentBinding\":\"vid1\",\"poToken\":\"TOK123\",\"expiresAt\":\"2030-01-01T00:00:00Z\"}'\n",
       );
       // Шелл-скрипт нельзя исполнять как node — подменяем executable.
       final provider = BgutilScriptPoTokenProvider.withResolver(
@@ -707,8 +736,8 @@ void main() {
         await req.response.close();
       });
 
-      final provider =
-          BgutilHttpPoTokenProvider(baseUrl: Uri.parse('http://127.0.0.1:${server.port}'));
+      final provider = BgutilHttpPoTokenProvider(
+          baseUrl: Uri.parse('http://127.0.0.1:${server.port}'));
       expect(await provider.tokenFor('vid9'), 'HTTP_TOK');
     });
 
@@ -720,8 +749,8 @@ void main() {
         await req.response.close();
       });
 
-      final provider =
-          BgutilHttpPoTokenProvider(baseUrl: Uri.parse('http://127.0.0.1:${server.port}'));
+      final provider = BgutilHttpPoTokenProvider(
+          baseUrl: Uri.parse('http://127.0.0.1:${server.port}'));
       expect(await provider.tokenFor('vid1'), isNull);
     });
   });
@@ -740,8 +769,10 @@ void main() {
         },
       );
 
-      expect(await cache.get('https://example/base.js'), 'player-js-for-https://example/base.js');
-      expect(await cache.get('https://example/base.js'), 'player-js-for-https://example/base.js');
+      expect(await cache.get('https://example/base.js'),
+          'player-js-for-https://example/base.js');
+      expect(await cache.get('https://example/base.js'),
+          'player-js-for-https://example/base.js');
       expect(downloads, 1);
       // Файл реально лежит на диске.
       expect(dir.listSync().whereType<File>().length, 1);
@@ -760,12 +791,14 @@ void main() {
       });
       final base = 'http://127.0.0.1:${server.port}';
 
-      expect(
-          await HttpRemoteConfigFetcher(Uri.parse('$base/cfg.json')).fetch(),
+      expect(await HttpRemoteConfigFetcher(Uri.parse('$base/cfg.json')).fetch(),
           '{"client_priority":["ANDROID_VR"]}');
-      expect(await HttpRemoteConfigFetcher(Uri.parse('$base/nope.json')).fetch(), isNull);
       expect(
-          await HttpRemoteConfigFetcher(Uri.parse('http://127.0.0.1:1/x')).fetch(),
+          await HttpRemoteConfigFetcher(Uri.parse('$base/nope.json')).fetch(),
+          isNull);
+      expect(
+          await HttpRemoteConfigFetcher(Uri.parse('http://127.0.0.1:1/x'))
+              .fetch(),
           isNull);
     });
 
@@ -782,8 +815,9 @@ void main() {
       });
 
       final loader = RemoteConfigLoader(
-        fetchRemoteJson:
-            HttpRemoteConfigFetcher(Uri.parse('http://127.0.0.1:${server.port}/rc')).fetch,
+        fetchRemoteJson: HttpRemoteConfigFetcher(
+                Uri.parse('http://127.0.0.1:${server.port}/rc'))
+            .fetch,
         persistLocally: (_) async {},
         readLocal: () async => null,
       );
@@ -886,4 +920,3 @@ Map<String, dynamic> _cipherResponse() => {
         ],
       },
     };
-

@@ -55,7 +55,9 @@ Future<String> httpGetString(String url,
     headers.forEach(req.headers.set);
     final resp = await req.close();
     if (resp.statusCode >= 300 && resp.statusCode < 400 && resp.headers.value('location') != null) {
-      return httpGetString(resp.headers.value('location')!, headers: headers);
+      final location = resp.headers.value('location')!;
+      await resp.drain<void>();
+      return await httpGetString(location, headers: headers);
     }
     return await resp.transform(utf8.decoder).join();
   } finally {

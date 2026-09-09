@@ -1,3 +1,19 @@
+// KMEP — a from-scratch YouTube extraction library for Dart.
+// Copyright (C) 2026 dipodev20
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -52,7 +68,7 @@ for (const k of ['log', 'info', 'warn', 'error', 'debug', 'trace']) {
   console[k] = function() {};
 }
 const rl = require('readline').createInterface({ input: process.stdin, terminal: false });
-function reply(obj) { process.stdout.write('${_marker}' + JSON.stringify(obj) + '\\n'); }
+function reply(obj) { process.stdout.write('$_marker' + JSON.stringify(obj) + '\\n'); }
 rl.on('line', function(line) {
   if (!line.trim()) return;
   let msg;
@@ -83,7 +99,9 @@ rl.on('line', function(line) {
     _stdoutSub = proc.stdout
         .transform(const Utf8Decoder(allowMalformed: true))
         .listen(_onData);
-    proc.stderr.transform(utf8.decoder).listen((_) {}); // шум диагностик — глушим
+    proc.stderr
+        .transform(utf8.decoder)
+        .listen((_) {}); // шум диагностик — глушим
     proc.exitCode.then((code) {
       _process = null;
       for (final c in _pending.values) {
@@ -118,7 +136,9 @@ rl.on('line', function(line) {
         final msg = jsonDecode(line) as Map<String, dynamic>;
         final id = msg['id'] as int;
         final completer = _pending.remove(id);
-        if (completer != null && !completer.isCompleted) completer.complete(msg);
+        if (completer != null && !completer.isCompleted) {
+          completer.complete(msg);
+        }
       } catch (_) {}
     }
   }
@@ -156,7 +176,8 @@ rl.on('line', function(line) {
         }
       }
     } on TimeoutException {
-      throw KMEPException(KMEPErrorCode.nsigFail, 'bootstrap player.js: таймаут');
+      throw KMEPException(
+          KMEPErrorCode.nsigFail, 'bootstrap player.js: таймаут');
     } finally {
       dir.delete(recursive: true).ignore();
     }
@@ -165,21 +186,25 @@ rl.on('line', function(line) {
   @override
   Future<String> call(String expression) async {
     if (_process == null) {
-      throw const KMEPException(KMEPErrorCode.nsigFail, 'JS-процесс не запущен (bootstrap не вызван?)');
+      throw const KMEPException(KMEPErrorCode.nsigFail,
+          'JS-процесс не запущен (bootstrap не вызван?)');
     }
     final Map<String, dynamic> res;
     try {
-      res = await _request({'type': 'eval', 'expression': expression}).timeout(callTimeout);
+      res = await _request({'type': 'eval', 'expression': expression})
+          .timeout(callTimeout);
     } on TimeoutException {
       _kill();
       throw KMEPException(KMEPErrorCode.nsigFail, 'JS-вызов: таймаут');
     }
     if (res['ok'] != true) {
-      throw KMEPException(KMEPErrorCode.nsigFail, 'JS-вызов упал: ${res['err']}');
+      throw KMEPException(
+          KMEPErrorCode.nsigFail, 'JS-вызов упал: ${res['err']}');
     }
     final val = res['val'];
     if (val is! String) {
-      throw const KMEPException(KMEPErrorCode.nsigFail, 'JS-вызов вернул не строку');
+      throw const KMEPException(
+          KMEPErrorCode.nsigFail, 'JS-вызов вернул не строку');
     }
     return val;
   }

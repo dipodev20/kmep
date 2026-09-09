@@ -1,3 +1,19 @@
+// KMEP — a from-scratch YouTube extraction library for Dart.
+// Copyright (C) 2026 dipodev20
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import 'package:http/http.dart' as http;
 
 import '../clients/client_configs.dart';
@@ -57,7 +73,8 @@ class ExtractionOrchestrator {
 
   InnerTubeClient _clientFor(String id) => _clients.putIfAbsent(
       id,
-      () => InnerTubeClient(ClientRegistry.resolved(id, overrides: config.clientOverrides),
+      () => InnerTubeClient(
+          ClientRegistry.resolved(id, overrides: config.clientOverrides),
           httpClient: httpClientFactory?.call()));
 
   Future<WatchPageMeta?> _watchMeta(String videoId) async {
@@ -111,12 +128,13 @@ class ExtractionOrchestrator {
 
       for (var attempt = 0; attempt <= config.maxRetriesPerClient; attempt++) {
         try {
-          final clientConfig =
-              ClientRegistry.resolved(clientId, overrides: config.clientOverrides);
+          final clientConfig = ClientRegistry.resolved(clientId,
+              overrides: config.clientOverrides);
           final client = _clientFor(clientId);
 
           // PO token: нужен requiresPoToken-клиентам (IOS/WEB на части IP).
-          final poToken = clientConfig.requiresPoToken ? await _poToken(videoId) : null;
+          final poToken =
+              clientConfig.requiresPoToken ? await _poToken(videoId) : null;
 
           // STS и visitorData берутся из watch-страницы один раз на видео.
           // STS нужен browser-клиентам, visitorData — TVHTML5 (needsVisitorData).
@@ -125,8 +143,11 @@ class ExtractionOrchestrator {
           if (clientConfig.needsSignatureTimestamp ||
               clientConfig.needsVisitorData) {
             final meta = await _watchMeta(videoId);
-            sts = clientConfig.needsSignatureTimestamp ? meta?.signatureTimestamp : null;
-            visitorData = clientConfig.needsVisitorData ? meta?.visitorData : null;
+            sts = clientConfig.needsSignatureTimestamp
+                ? meta?.signatureTimestamp
+                : null;
+            visitorData =
+                clientConfig.needsVisitorData ? meta?.visitorData : null;
           }
           final raw = await client.fetchPlayer(
             videoId,
@@ -157,9 +178,10 @@ class ExtractionOrchestrator {
             final meta = await _watchMeta(videoId);
             final playerJsUrl = meta?.playerJsUrl;
             if (playerJsUrl != null) {
-              final resolvedStreams =
-                  await streamResolver.resolve(rawFormats, playerJsUrl: playerJsUrl);
-              video = _withStreams(video, _applyPoToken(resolvedStreams, poToken));
+              final resolvedStreams = await streamResolver.resolve(rawFormats,
+                  playerJsUrl: playerJsUrl);
+              video =
+                  _withStreams(video, _applyPoToken(resolvedStreams, poToken));
             }
             // playerJsUrl == null -> остаётся сырой парс (пустые url у
             // cipher-форматов), ниже сработает "No streams" и фолбэк.
@@ -168,7 +190,9 @@ class ExtractionOrchestrator {
           }
 
           if (video.streams.isEmpty && video.hlsManifestUrl == null) {
-            throw KMEPException(KMEPErrorCode.partial, 'No streams from $clientId', clientId: clientId);
+            throw KMEPException(
+                KMEPErrorCode.partial, 'No streams from $clientId',
+                clientId: clientId);
           }
 
           if (best == null || _isBetter(video, best)) best = video;
@@ -206,11 +230,13 @@ class ExtractionOrchestrator {
         await cache.putVideo(videoId, video);
         return video;
       } catch (e) {
-        throw KMEPException(KMEPErrorCode.unavailable, 'All clients and backend failed: $errors / $e');
+        throw KMEPException(KMEPErrorCode.unavailable,
+            'All clients and backend failed: $errors / $e');
       }
     }
 
-    throw KMEPException(KMEPErrorCode.unavailable, 'All extraction methods exhausted: $errors');
+    throw KMEPException(
+        KMEPErrorCode.unavailable, 'All extraction methods exhausted: $errors');
   }
 
   /// Добавляет pot= к googlevideo-URL, если токен есть. Для не-gv хостов
@@ -238,12 +264,14 @@ class ExtractionOrchestrator {
 
   bool _meetsTarget(VideoInfo v) {
     if (v.isLive) return v.hlsManifestUrl != null;
-    final maxHeight = v.streams.map((s) => s.height ?? 0).fold(0, (a, b) => a > b ? a : b);
+    final maxHeight =
+        v.streams.map((s) => s.height ?? 0).fold(0, (a, b) => a > b ? a : b);
     return maxHeight >= config.targetMinHeight;
   }
 
   bool _isBetter(VideoInfo a, VideoInfo b) {
-    int maxH(VideoInfo v) => v.streams.map((s) => s.height ?? 0).fold(0, (x, y) => x > y ? x : y);
+    int maxH(VideoInfo v) =>
+        v.streams.map((s) => s.height ?? 0).fold(0, (x, y) => x > y ? x : y);
     return maxH(a) > maxH(b);
   }
 

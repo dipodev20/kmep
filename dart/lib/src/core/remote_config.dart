@@ -1,3 +1,19 @@
+// KMEP — a from-scratch YouTube extraction library for Dart.
+// Copyright (C) 2026 dipodev20
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import 'dart:convert';
 
 class RemoteConfig {
@@ -21,8 +37,13 @@ class RemoteConfig {
 
   const RemoteConfig({
     this.kmepVersion = '1.0',
-    this.clientPriority =
-        const ['ANDROID_VR', 'WEB', 'IOS', 'WEB_SAFARI', 'TV'],
+    this.clientPriority = const [
+      'ANDROID_VR',
+      'WEB',
+      'IOS',
+      'WEB_SAFARI',
+      'TV'
+    ],
     this.enableEmbeddedYtdlp = true,
     this.backendEndpoint,
     this.backendTimeoutMs = 5000,
@@ -42,17 +63,20 @@ class RemoteConfig {
         enableEmbeddedYtdlp: json['enable_embedded_ytdlp'] as bool? ?? true,
         backendEndpoint: json['backend_endpoint'] as String?,
         backendTimeoutMs: (json['backend_timeout_ms'] as num?)?.toInt() ?? 5000,
-        nsigCacheTtlHours: (json['nsig_cache_ttl_hours'] as num?)?.toInt() ?? 24,
+        nsigCacheTtlHours:
+            (json['nsig_cache_ttl_hours'] as num?)?.toInt() ?? 24,
         poTokenRequired: json['po_token_required'] as bool? ?? false,
         emergencyMode: json['emergency_mode'] as bool? ?? false,
-        maxRetriesPerClient: (json['max_retries_per_client'] as num?)?.toInt() ?? 2,
+        maxRetriesPerClient:
+            (json['max_retries_per_client'] as num?)?.toInt() ?? 2,
         parallelFetch: json['parallel_fetch'] as bool? ?? false,
         targetMinHeight: (json['target_min_height'] as num?)?.toInt() ?? 1080,
         clientOverrides:
             (json['client_overrides'] as Map<String, dynamic>?)?.map(
-          (k, v) => MapEntry(k, (v as Map<String, dynamic>?) ?? const {}),
-        ) ??
-            const {},
+                  (k, v) =>
+                      MapEntry(k, (v as Map<String, dynamic>?) ?? const {}),
+                ) ??
+                const {},
       );
 
   Map<String, dynamic> toJson() => {
@@ -99,5 +123,6 @@ class RemoteConfigLoader {
     return const RemoteConfig();
   }
 
-  Map<String, dynamic> _decode(String json) => jsonDecode(json) as Map<String, dynamic>;
+  Map<String, dynamic> _decode(String json) =>
+      jsonDecode(json) as Map<String, dynamic>;
 }

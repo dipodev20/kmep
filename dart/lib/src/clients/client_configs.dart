@@ -1,3 +1,19 @@
+// KMEP — a from-scratch YouTube extraction library for Dart.
+// Copyright (C) 2026 dipodev20
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 /// Конфигурация одного InnerTube-клиента: заголовки, context-блок для тела
 /// запроса, и метаданные, которые использует Orchestrator для приоритезации.
 ///
@@ -56,7 +72,9 @@ class InnerTubeClientConfig {
     this.extraContext = const {},
   });
 
-  Map<String, dynamic> buildContext({String hl = 'en', String gl = 'US', String? visitorData}) => {
+  Map<String, dynamic> buildContext(
+          {String hl = 'en', String gl = 'US', String? visitorData}) =>
+      {
         'client': {
           'clientName': bodyClientName,
           'clientVersion': clientVersion,
@@ -72,8 +90,7 @@ class InnerTubeClientConfig {
         'Content-Type': 'application/json',
         if (headerClientName != null)
           'X-YouTube-Client-Name': headerClientName!,
-        if (headerClientName != null)
-          'X-YouTube-Client-Version': clientVersion,
+        if (headerClientName != null) 'X-YouTube-Client-Version': clientVersion,
         if (visitorData != null) 'X-Goog-Visitor-Id': visitorData,
       };
 
@@ -247,10 +264,9 @@ class ClientRegistry {
       requiresPoToken: boolV('requiresPoToken'),
       supportsSabrOnly: boolV('supportsSabrOnly'),
       maxQuality: str('maxQuality'),
-      extraContext:
-          o['extraContext'] is Map<String, dynamic>
-              ? o['extraContext'] as Map<String, dynamic>
-              : null,
+      extraContext: o['extraContext'] is Map<String, dynamic>
+          ? o['extraContext'] as Map<String, dynamic>
+          : null,
     );
   }
 }

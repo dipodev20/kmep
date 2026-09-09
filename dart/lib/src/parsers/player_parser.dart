@@ -1,31 +1,53 @@
+// KMEP — a from-scratch YouTube extraction library for Dart.
+// Copyright (C) 2026 dipodev20
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import '../models/kmep_models.dart';
 
 /// Разбирает сырой playerResponse (JSON от /youtubei/v1/player) в VideoInfo.
 /// Потоки здесь ещё "сырые" — url может быть подписан (signatureCipher) или
 /// содержать n-sig параметр; расшифровка — забота StreamResolver, не парсера.
 class PlayerParser {
-  static VideoInfo parse(Map<String, dynamic> response, {required String fallbackVideoId}) {
-    final playabilityStatus = response['playabilityStatus'] as Map<String, dynamic>?;
+  static VideoInfo parse(Map<String, dynamic> response,
+      {required String fallbackVideoId}) {
+    final playabilityStatus =
+        response['playabilityStatus'] as Map<String, dynamic>?;
     final status = playabilityStatus?['status'] as String?;
 
     if (status == 'ERROR' || status == 'LOGIN_REQUIRED') {
       throw KMEPException(
         KMEPErrorCode.unavailable,
-        playabilityStatus?['reason']?.toString() ?? 'Video unavailable ($status)',
+        playabilityStatus?['reason']?.toString() ??
+            'Video unavailable ($status)',
       );
     }
 
-    final videoDetails = response['videoDetails'] as Map<String, dynamic>? ?? {};
+    final videoDetails =
+        response['videoDetails'] as Map<String, dynamic>? ?? {};
     final microformat = (response['microformat']
             as Map<String, dynamic>?)?['playerMicroformatRenderer']
         as Map<String, dynamic>?;
 
     final streamingData = response['streamingData'] as Map<String, dynamic>?;
-    final isLive = videoDetails['isLive'] == true || videoDetails['isLiveContent'] == true;
+    final isLive =
+        videoDetails['isLive'] == true || videoDetails['isLiveContent'] == true;
 
     final rawStreams = <Map<String, dynamic>>[
       ...?(streamingData?['formats'] as List?)?.cast<Map<String, dynamic>>(),
-      ...?(streamingData?['adaptiveFormats'] as List?)?.cast<Map<String, dynamic>>(),
+      ...?(streamingData?['adaptiveFormats'] as List?)
+          ?.cast<Map<String, dynamic>>(),
     ];
 
     final streams = <KMEPStream>[];
@@ -40,7 +62,8 @@ class PlayerParser {
       final isAudio = mimeType.startsWith('audio/');
       streams.add(KMEPStream(
         url: url,
-        quality: (fmt['qualityLabel'] as String?) ?? (isAudio ? 'audio' : 'unknown'),
+        quality:
+            (fmt['qualityLabel'] as String?) ?? (isAudio ? 'audio' : 'unknown'),
         codec: _extractCodec(mimeType),
         type: isAudio ? 'audio' : 'video',
         itag: (fmt['itag'] as num?)?.toInt() ?? 0,
@@ -74,7 +97,8 @@ class PlayerParser {
       videoId: (videoDetails['videoId'] as String?) ?? fallbackVideoId,
       title: (videoDetails['title'] as String?) ?? '',
       description: (videoDetails['shortDescription'] as String?) ?? '',
-      durationSeconds: int.tryParse(videoDetails['lengthSeconds']?.toString() ?? '') ?? 0,
+      durationSeconds:
+          int.tryParse(videoDetails['lengthSeconds']?.toString() ?? '') ?? 0,
       viewCount: int.tryParse(videoDetails['viewCount']?.toString() ?? '') ?? 0,
       publishDate: microformat?['publishDate'] as String?,
       channelId: (videoDetails['channelId'] as String?) ?? '',
@@ -93,7 +117,8 @@ class PlayerParser {
     final streamingData = response['streamingData'] as Map<String, dynamic>?;
     return <Map<String, dynamic>>[
       ...?(streamingData?['formats'] as List?)?.cast<Map<String, dynamic>>(),
-      ...?(streamingData?['adaptiveFormats'] as List?)?.cast<Map<String, dynamic>>(),
+      ...?(streamingData?['adaptiveFormats'] as List?)
+          ?.cast<Map<String, dynamic>>(),
     ];
   }
 

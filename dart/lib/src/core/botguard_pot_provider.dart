@@ -1,3 +1,19 @@
+// KMEP — a from-scratch YouTube extraction library for Dart.
+// Copyright (C) 2026 dipodev20
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -33,7 +49,17 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
 
   /// {videoId: contentBinding} — переопределение биндинга (например
   /// visitorData конкретного видео для WEB без gvs-эксперимента).
+  /// Синхронный: удобно для готовой карты, неудобно для биндинга,
+  /// который сам приходит по сети (например из [WatchPageMetaProvider]).
+  /// Для этого случая — [bindingFor] ниже.
   final Map<String, String> Function()? bindingResolver;
+
+  /// Асинхронная альтернатива [bindingResolver]: резолвит биндинг для
+  /// конкретного videoId по требованию (например
+  /// `(id) async => (await metaProvider.fetch(id))?.visitorData`).
+  /// Если задан — имеет приоритет над [bindingResolver]. Ошибки
+  /// трактуются как "нет переопределения" (используется videoId).
+  final Future<String?> Function(String videoId)? bindingFor;
 
   /// Дополнительные bootstrap-части перед glue (инструментально: jsdom-
   /// окружение для десктопных прогонов). Прод не использует.
@@ -48,6 +74,7 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
     required this.fetchText,
     this.postGenerateItOverride,
     this.bindingResolver,
+    this.bindingFor,
     this.extraBootstrapParts,
     this.pollInterval = const Duration(milliseconds: 100),
     this.stepTimeout = const Duration(seconds: 30),
@@ -80,27 +107,38 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
   @override
   Future<String?> tokenFor(String videoId) {
     final prev = _singleFlight;
-    final run = () async {
+    Future<String?> run() async {
       try {
         if (prev != null) await prev; // не молотим параллельно: догоняем
       } catch (_) {}
       return _tokenForLocked(videoId);
-    };
+    }
+
     return _singleFlight = run();
   }
 
   Future<String?> _tokenForLocked(String videoId) async {
-    final binding = bindingResolver?.call()[videoId] ?? videoId;
+    String? resolved;
+    if (bindingFor != null) {
+      try {
+        resolved = await bindingFor!(videoId);
+      } catch (_) {
+        resolved = null;
+      }
+    }
+    final binding = resolved ?? bindingResolver?.call()[videoId] ?? videoId;
     final cached = _tokenCache[binding];
     if (cached != null) return cached;
     try {
       await _ensureSession();
-      await _call('__kmepBgMint(${jsonEncode(_integrityToken)},${jsonEncode(binding)})');
+      await _call(
+          '__kmepBgMint(${jsonEncode(_integrityToken)},${jsonEncode(binding)})');
       final st = await _waitFor(const {'potOk'},
           failOn: const {'error'}, what: 'минтинг');
       final pot = st['pot'] as String?;
       if (pot == null || pot.isEmpty) {
-        throw KMEPException(KMEPErrorCode.potFail, 'минтинг вернул пустой токен');
+        throw KMEPException(
+            KMEPErrorCode.potFail, 'минтинг вернул пустой токен');
       }
       lastError = null;
       return _tokenCache[binding] = pot;
@@ -127,25 +165,24 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
     }
 
     // S1. Homepage -> ytcfg + челлендж window.ytAtN({...}).R.bgChallenge.
-    final html = await fetchText('https://www.youtube.com/')
-        .timeout(homepageTimeout);
+    final html =
+        await fetchText('https://www.youtube.com/').timeout(homepageTimeout);
     final ytcfgMatch =
         RegExp(r'ytcfg\.set\(({.+?})\);', dotAll: true).firstMatch(html);
     if (ytcfgMatch == null) {
-      throw const KMEPException(KMEPErrorCode.potFail,
-          'homepage: не найден ytcfg.set({...})');
+      throw const KMEPException(
+          KMEPErrorCode.potFail, 'homepage: не найден ytcfg.set({...})');
     }
     final ytcfg = jsonDecode(ytcfgMatch.group(1)!) as Map<String, dynamic>;
-    final attMatch = RegExp(r'window\.ytAtN\(\s*({[\s\S]*?})\s*\)')
-        .firstMatch(html);
+    final attMatch =
+        RegExp(r'window\.ytAtN\(\s*({[\s\S]*?})\s*\)').firstMatch(html);
     if (attMatch == null) {
       throw const KMEPException(
           KMEPErrorCode.potFail, 'homepage: не найден window.ytAtN({...})');
     }
     final attData = parseLooseJson(attMatch.group(1)!);
-    final challenge =
-        ((attData['R'] as Map<String, dynamic>?)?['bgChallenge'])
-            as Map<String, dynamic>?;
+    final challenge = ((attData['R'] as Map<String, dynamic>?)?['bgChallenge'])
+        as Map<String, dynamic>?;
     if (challenge == null ||
         challenge['program'] is! String ||
         challenge['globalName'] is! String) {
@@ -154,10 +191,8 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
     }
     final program = challenge['program'] as String;
     final globalName = challenge['globalName'] as String;
-    final wrapped = (challenge['interpreterUrl']
-        as Map<String, dynamic>?)?[
-      'privateDoNotAccessOrElseTrustedResourceUrlWrappedValue'
-    ];
+    final wrapped = (challenge['interpreterUrl'] as Map<String, dynamic>?)?[
+        'privateDoNotAccessOrElseTrustedResourceUrlWrappedValue'];
     if (wrapped is! String || wrapped.isEmpty) {
       throw const KMEPException(
           KMEPErrorCode.potFail, 'bgChallenge без interpreterUrl');
@@ -167,7 +202,8 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
     final interpJs = await fetchText('https:$wrapped');
 
     // Bootstrap: glue + yt.config_ + delete старого VM + интерпретатор.
-    final envPart = 'try{delete globalThis[${jsonEncode(globalName)}];}catch(e){}'
+    final envPart =
+        'try{delete globalThis[${jsonEncode(globalName)}];}catch(e){}'
         'globalThis.yt={config_:${jsonEncode(ytcfg)}};'
         'try{globalThis.window.yt=globalThis.yt;}catch(e){}';
     await jsRuntime.bootstrapParts([
@@ -179,14 +215,13 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
 
     // S3. Snapshot (синхронный путь через ret[0], Promise-обёртка внутри
     // glue — поллинг разруливает обе формы).
-    await _call('__kmepBgStart(${jsonEncode(program)},${jsonEncode(globalName)})');
+    await _call(
+        '__kmepBgStart(${jsonEncode(program)},${jsonEncode(globalName)})');
     await _waitFor(const {'ready'}, failOn: const {'error'}, what: 'vm.a');
 
     await _call('__kmepBgSnapshot("")');
-    final snapSt = await _waitFor(
-        const {'snapOk', 'degraded', 'snapNoWpo'},
-        failOn: const {'error'},
-        what: 'snapshot');
+    final snapSt = await _waitFor(const {'snapOk', 'degraded', 'snapNoWpo'},
+        failOn: const {'error'}, what: 'snapshot');
     if (snapSt['phase'] == 'degraded') {
       // R3: VM скорил окружение и вернул деградированный hex-ответ.
       throw const KMEPException(KMEPErrorCode.potFail,
@@ -208,7 +243,7 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
 
   Future<({String token, int ttlSecs})> _generateIt(String response) async {
     final body = jsonEncode([_requestKey, response]);
-    late final raw;
+    late final Object? raw;
     if (postGenerateItOverride != null) {
       raw = await postGenerateItOverride!(Uri.parse(_generateItUrl), body);
     } else {
@@ -219,9 +254,10 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
         req.headers.set('x-goog-api-key', _generateItApiKey);
         req.headers.set('x-user-agent', 'grpc-web-javascript/0.1');
         req.headers.set('origin', 'https://www.youtube.com');
-        req.headers.set('user-agent',
+        req.headers.set(
+            'user-agent',
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/124.0 Safari/537.36');
+                '(KHTML, like Gecko) Chrome/124.0 Safari/537.36');
         req.write(body);
         final resp = await req.close().timeout(stepTimeout);
         raw = await resp.transform(utf8.decoder).join().timeout(stepTimeout);
@@ -235,9 +271,12 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
         client.close();
       }
     }
-    final list = jsonDecode(raw) as List<dynamic>;
-    if (list.isEmpty || list.first is! String || (list.first as String).isEmpty) {
-      throw const KMEPException(KMEPErrorCode.potFail, 'GenerateIT: пустой токен');
+    final list = jsonDecode(raw as String) as List<dynamic>;
+    if (list.isEmpty ||
+        list.first is! String ||
+        (list.first as String).isEmpty) {
+      throw const KMEPException(
+          KMEPErrorCode.potFail, 'GenerateIT: пустой токен');
     }
     return (
       token: list.first as String,
@@ -256,8 +295,8 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
       final phase = st['phase'] as String? ?? 'idle';
       if (okPhases.contains(phase)) return st;
       if (failOn.contains(phase)) {
-        throw KMEPException(KMEPErrorCode.potFail,
-            '$what: фаза "$phase" ${st['err'] ?? ''}');
+        throw KMEPException(
+            KMEPErrorCode.potFail, '$what: фаза "$phase" ${st['err'] ?? ''}');
       }
       if (DateTime.now().isAfter(deadline)) {
         throw KMEPException(
@@ -295,8 +334,7 @@ class BotGuardJsPoTokenProvider implements PoTokenProvider {
 /// кавычек, \xNN, висячие запятые, строковые значения с вложенным JSON.
 /// Порт parseLooseJSON из pot_research/bg_full2.js 1:1.
 Map<String, dynamic> parseLooseJson(String looseJson) {
-  var s = looseJson.replaceAllMapped(
-      RegExp(r'\\x([0-9A-Fa-f]{2})'),
+  var s = looseJson.replaceAllMapped(RegExp(r'\\x([0-9A-Fa-f]{2})'),
       (m) => String.fromCharCode(int.parse(m.group(1)!, radix: 16)));
   // ВАЖНО: у Dart replaceAll замена ЛИТЕРАЛЬНАЯ ($1 не подставляется,
   // как в JS) — нужен replaceAllMapped.
@@ -305,8 +343,8 @@ Map<String, dynamic> parseLooseJson(String looseJson) {
     final inner = m.group(1)!.replaceAll(r"\'", "'");
     return jsonEncode(inner);
   });
-  s = s.replaceAllMapped(
-      RegExp(r'([{,]\s*)([a-zA-Z0-9_$]+)\s*:'), (m) => '${m.group(1)}"${m.group(2)}":');
+  s = s.replaceAllMapped(RegExp(r'([{,]\s*)([a-zA-Z0-9_$]+)\s*:'),
+      (m) => '${m.group(1)}"${m.group(2)}":');
   final parsed = jsonDecode(s);
   if (parsed is! Map<String, dynamic>) {
     throw const KMEPException(KMEPErrorCode.potFail, 'looseJSON: не объект');
@@ -317,7 +355,9 @@ Map<String, dynamic> parseLooseJson(String looseJson) {
       if (t.startsWith('{') || t.startsWith('[')) {
         try {
           parsed[k] = jsonDecode(t);
-        } on FormatException {}
+        } on FormatException {
+          // вложенный loose-JSON — оставляем строкой
+        }
       }
     }
   });

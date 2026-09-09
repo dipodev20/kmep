@@ -1,3 +1,19 @@
+// KMEP — a from-scratch YouTube extraction library for Dart.
+// Copyright (C) 2026 dipodev20
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import 'dart:convert' show jsonEncode;
 
 import '../models/kmep_models.dart';
@@ -188,7 +204,8 @@ class PlayerJsCacheEntry {
   final String jsUrl;
   final DateTime bootstrappedAt;
   PlayerJsCacheEntry({required this.jsUrl, required this.bootstrappedAt});
-  bool isExpired(Duration ttl) => DateTime.now().difference(bootstrappedAt) > ttl;
+  bool isExpired(Duration ttl) =>
+      DateTime.now().difference(bootstrappedAt) > ttl;
 }
 
 /// Экспорт функций из замыкания IIFE player.js.
@@ -278,7 +295,8 @@ const String discoverResolveFnScript = r'''
 ///
 /// ВАЖНО: вызывать ровно ОДИН раз на URL — повторный прогон уже
 /// обработанного URL трансформирует n ещё раз и делает ссылку невалидной.
-String _defaultResolveUrlExpression(String url, String? sigParam, String? signature) {
+String _defaultResolveUrlExpression(
+    String url, String? sigParam, String? signature) {
   final sp = jsonEncode(sigParam ?? '');
   final s = jsonEncode(signature ?? '');
   return 'globalThis.__kmepOut=(function(){'
@@ -319,7 +337,8 @@ class StreamResolver {
       final mimeType = fmt['mimeType'] as String? ?? '';
       final isAudio = mimeType.startsWith('audio/');
       String? url = fmt['url'] as String?;
-      final cipher = fmt['signatureCipher'] as String? ?? fmt['cipher'] as String?;
+      final cipher =
+          fmt['signatureCipher'] as String? ?? fmt['cipher'] as String?;
       String? sigParam;
       String? signature;
 
@@ -340,7 +359,8 @@ class StreamResolver {
 
       resolved.add(KMEPStream(
         url: url,
-        quality: (fmt['qualityLabel'] as String?) ?? (isAudio ? 'audio' : 'unknown'),
+        quality:
+            (fmt['qualityLabel'] as String?) ?? (isAudio ? 'audio' : 'unknown'),
         codec: _extractCodec(mimeType),
         type: isAudio ? 'audio' : 'video',
         itag: (fmt['itag'] as num?)?.toInt() ?? 0,
@@ -352,10 +372,12 @@ class StreamResolver {
     }
 
     if (resolved.isEmpty && rawFormats.isNotEmpty) {
-      final sabrOnly = rawFormats.where((f) =>
-          f['url'] == null &&
-          f['signatureCipher'] == null &&
-          f['cipher'] == null).length;
+      final sabrOnly = rawFormats
+          .where((f) =>
+              f['url'] == null &&
+              f['signatureCipher'] == null &&
+              f['cipher'] == null)
+          .length;
       throw KMEPException(
         KMEPErrorCode.nsigFail,
         sabrOnly == rawFormats.length
@@ -368,7 +390,9 @@ class StreamResolver {
   }
 
   Future<void> _ensureBootstrapped(String jsUrl) async {
-    if (_bootstrappedFor == jsUrl) return; // тот же player.js — не грузим повторно
+    if (_bootstrappedFor == jsUrl) {
+      return; // тот же player.js — не грузим повторно
+    }
     final playerJs = await fetchPlayerJs(jsUrl);
     // Патч window=this + коллектор замыкания — внутри preparePlayerJs
     // (найдено экспериментально, см. комментарии там). Части шлём
@@ -396,7 +420,8 @@ class StreamResolver {
       );
     }
     final trimmed = resolved.trim();
-    if (trimmed.isEmpty || !(trimmed.startsWith('http://') || trimmed.startsWith('https://'))) {
+    if (trimmed.isEmpty ||
+        !(trimmed.startsWith('http://') || trimmed.startsWith('https://'))) {
       throw const KMEPException(
         KMEPErrorCode.nsigFail,
         'player.js sig/nsig call вернул не URL',

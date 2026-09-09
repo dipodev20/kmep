@@ -1,6 +1,23 @@
+// KMEP — a from-scratch YouTube extraction library for Dart.
+// Copyright (C) 2026 dipodev20
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 /// KMEP core data models.
 /// Один файл для старта — как модели разрастутся, режем на отдельные файлы,
 /// но пока удобнее держать вместе.
+library;
 
 class KMEPStream {
   final String url;
@@ -133,8 +150,45 @@ class CommentInfo {
   });
 }
 
+/// Lightweight video card as returned by search/shorts-feed — this is
+/// what YouTube's own search results give you (no streams, no full
+/// description). Call [Kmep.getVideo] with [videoId] if you need the
+/// full [VideoInfo] with resolved streams.
+class VideoSearchResult {
+  final String videoId;
+  final String title;
+  final String channelName;
+  final int durationSeconds;
+  final int viewCount;
+  final String thumbnailUrl;
+  final String uploadDate;
+  final bool isShort;
+
+  const VideoSearchResult({
+    required this.videoId,
+    required this.title,
+    required this.channelName,
+    required this.durationSeconds,
+    required this.viewCount,
+    required this.thumbnailUrl,
+    required this.uploadDate,
+    this.isShort = false,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'videoId': videoId,
+        'title': title,
+        'channelName': channelName,
+        'durationSeconds': durationSeconds,
+        'viewCount': viewCount,
+        'thumbnailUrl': thumbnailUrl,
+        'uploadDate': uploadDate,
+        'isShort': isShort,
+      };
+}
+
 class SearchResultPage {
-  final List<dynamic> results; // VideoInfo | ChannelInfo | смешанные карточки
+  final List<VideoSearchResult> results;
   final String? continuation;
   final int? estimatedResults;
 

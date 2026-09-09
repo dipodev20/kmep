@@ -1,3 +1,19 @@
+// KMEP — a from-scratch YouTube extraction library for Dart.
+// Copyright (C) 2026 dipodev20
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 // Юнит-тесты BotGuardJsPoTokenProvider на фейковом JsRuntime:
 // state machine провайдера, поллинг фаз, кэш сессии/биндингов,
 // деградация (R3) и отказ GenerateIT (R2) -> null без исключений.
@@ -57,7 +73,8 @@ class FakeJsRuntime implements JsRuntime {
     } else if (expression.startsWith('__kmepBgState()')) {
       // no-op: читаем текущее состояние
     } else {
-      throw KMEPException(KMEPErrorCode.potFail, 'неожиданный вызов: $expression');
+      throw KMEPException(
+          KMEPErrorCode.potFail, 'неожиданный вызов: $expression');
     }
     return jsonEncode(_state);
   }
@@ -88,10 +105,11 @@ void main() {
         },
         postGenerateItOverride: (url, body) async {
           generateItCalls.add((url, body));
-          final respond = generateItResponder ?? ((url, body) => '["IT-TOKEN",43200]');
+          final respond =
+              generateItResponder ?? ((url, body) => '["IT-TOKEN",43200]');
           final out = respond(url, body);
           if (!out.startsWith('[')) {
-            throw KMEPException(KMEPErrorCode.potFail, 'GenerateIT HTTP ${out}');
+            throw KMEPException(KMEPErrorCode.potFail, 'GenerateIT HTTP $out');
           }
           return out;
         },
@@ -129,8 +147,7 @@ void main() {
     expect(sent[1], r'$BG-OK-RESPONSE');
 
     // Минтинг — с integrity token и биндингом videoId по умолчанию.
-    final mintCall =
-        js.calls.firstWhere((c) => c.startsWith('__kmepBgMint('));
+    final mintCall = js.calls.firstWhere((c) => c.startsWith('__kmepBgMint('));
     expect(mintCall, contains('IT-TOKEN'));
     expect(mintCall, contains('dQw4w9WgXcQ'));
   });
@@ -156,8 +173,7 @@ void main() {
     expect(await p.tokenFor('video2'), 'FAKE-POT-TOKEN');
     expect(fetchCount, 1); // homepage один раз
     expect(generateItCalls, hasLength(1)); // integrity token из кэша
-    expect(
-        js.calls.where((c) => c.startsWith('__kmepBgMint(')).length, 2);
+    expect(js.calls.where((c) => c.startsWith('__kmepBgMint(')).length, 2);
   });
 
   test('bindingResolver подменяет contentBinding', () async {
