@@ -1,4 +1,4 @@
-# kmep_proto
+# kmep
 
 [![Dart CI](https://github.com/dipodev20/vidora-kmep-proto/actions/workflows/dart_ci.yml/badge.svg)](https://github.com/dipodev20/vidora-kmep-proto/actions/workflows/dart_ci.yml)
 [![License: GPLv3](https://img.shields.io/badge/license-GPLv3-blue.svg)](../LICENSE)
@@ -11,7 +11,7 @@ quick-reference.
 ## Quick start
 
 ```dart
-import 'package:kmep_proto/kmep.dart';
+import 'package:kmep/kmep.dart';
 
 final kmep = Kmep.withOnDevicePoToken(
   jsRuntime: myPlayerJsRuntime,   // see ../flutter_integration or NodeProcessJsRuntime

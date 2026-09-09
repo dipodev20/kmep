@@ -11,7 +11,7 @@
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:kmep_proto/kmep.dart';
+import 'package:kmep/kmep.dart';
 
 const _ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '

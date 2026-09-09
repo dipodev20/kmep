@@ -1,10 +1,11 @@
-name: kmep_proto
+name: kmep
 description: >
   KMEP — a YouTube extraction library for Dart: InnerTube multi-client
   fallback, on-device player.js execution for signature/n resolution,
-  on-device PO token (BotGuard) generation, search and shorts feed.
-  Public API is the Kmep facade class (see lib/kmep.dart). Package name
-  is kmep_proto for now (pre-1.0, API not yet stable) — see CHANGELOG.md.
+  on-device PO token (BotGuard) generation, search, shorts feed,
+  channels, playlists and comments. Public API is the Kmep facade
+  class (see lib/kmep.dart). Pre-1.0, API not yet stable — see
+  CHANGELOG.md.
 version: 0.3.0
 publish_to: 'none'
 homepage: https://github.com/dipodev20/vidora-kmep-proto

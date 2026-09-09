@@ -24,7 +24,7 @@
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:kmep_proto/kmep.dart';
+import 'package:kmep/kmep.dart';
 
 Future<String> fetchText(String url) async {
   final resp = await http.get(Uri.parse(url), headers: const {

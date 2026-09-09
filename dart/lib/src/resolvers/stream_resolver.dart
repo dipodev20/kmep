@@ -154,7 +154,7 @@ const String browserShimScript = r'''
   globalThis.MutationObserver = function() { this.observe = noop; this.disconnect = noop; this.takeRecords = function() { return []; }; };
   globalThis.ResizeObserver = globalThis.MutationObserver;
   globalThis.IntersectionObserver = function() { this.observe = noop; this.unobserve = noop; this.disconnect = noop; };
-  globalThis.Worker = function() { throw new Error('Worker not supported in kmep-proto shim'); };
+  globalThis.Worker = function() { throw new Error('Worker not supported in KMEP shim'); };
 
   // Найдено через tool/find_nsig.js (player.js:2206):
   // FI0() на top-level делает XMLHttpRequest.prototype.fetch — нужен
@@ -187,7 +187,7 @@ const String browserShimScript = r'''
 
 /// Полная подготовка сырого player.js к bootstrap: патч window=this +
 /// инжект коллектора выгрузки замыкания. Публичная — используется и
-/// StreamResolver'ом, и on-device харнесом (kmep_proto_harness), чтобы
+/// StreamResolver'ом, и on-device харнесом (kmep_harness), чтобы
 /// пайплайн не расходился между продом и диагностикой.
 String preparePlayerJs(String rawPlayerJs) {
   var playerJs = rawPlayerJs.replaceAll(

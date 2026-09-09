@@ -21,7 +21,7 @@
 import 'dart:convert';
 
 import 'package:test/test.dart';
-import 'package:kmep_proto/kmep.dart';
+import 'package:kmep/kmep.dart';
 
 class FakeJsRuntime implements JsRuntime {
   final List<String> bootstrapped = [];

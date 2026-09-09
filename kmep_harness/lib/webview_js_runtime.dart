@@ -20,7 +20,7 @@ import 'dart:ui' show Size;
 
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import 'package:kmep_proto/kmep.dart'
+import 'package:kmep/kmep.dart'
     show JsRuntime, KMEPException, KMEPErrorCode;
 
 /// JsRuntime поверх headless WebView (системный движок: Chrome/V8 на

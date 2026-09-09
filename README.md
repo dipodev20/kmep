@@ -50,9 +50,21 @@ results instead of raw JSON maps, and curated exports — see
 
 [vidora]: https://github.com/dipodev20
 
-**Pre-1.0**: the API can still change between minor versions. Package name
-is `kmep_proto` for now — it'll likely become just `kmep` once the API
-settles; that rename is tracked, not done silently.
+**Pre-1.0**: the API can still change between minor versions. The
+package is named **`kmep`** (renamed from `kmep_proto` in 0.3.0) —
+update your `pubspec.yaml` imports accordingly.
+
+## Install
+
+Not on pub.dev yet. Depend on it via git or path:
+
+```yaml
+dependencies:
+  kmep:
+    git:
+      url: https://github.com/dipodev20/vidora-kmep-proto
+      path: dart
+```
 
 ## What it does
 
@@ -77,18 +89,6 @@ Different runtime, same idea. NewPipeExtractor is JVM (Kotlin/Java); this
 is pure Dart, for apps that don't want a JVM dependency. It's a
 complement, not a replacement — this library's own router falls back to
 NewPipeExtractor on any failure in the app it was built for.
-
-## Install
-
-Not on pub.dev yet. Depend on it via git or path:
-
-```yaml
-dependencies:
-  kmep_proto:
-    git:
-      url: https://github.com/dipodev20/vidora-kmep-proto
-      path: dart
-```
 
 ## Beyond videos: channels, playlists, comments
 

@@ -6,7 +6,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:kmep_proto/kmep.dart';
+import 'package:kmep/kmep.dart';
 
 Future<String> httpGet(String url) async {
   final client = HttpClient();

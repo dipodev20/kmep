@@ -15,8 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import 'package:test/test.dart';
-import 'package:kmep_proto/kmep.dart';
-import 'package:kmep_proto/src/search/search_client.dart';
+import 'package:kmep/kmep.dart';
+import 'package:kmep/src/search/search_client.dart';
 
 void main() {
   group('lengthToSeconds', () {

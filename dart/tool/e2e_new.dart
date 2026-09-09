@@ -1,6 +1,6 @@
 // Полный e2e новых модулей: каналы, плейлисты, комментарии.
 // Запуск: dart run tool/e2e_new.dart
-import 'package:kmep_proto/kmep.dart';
+import 'package:kmep/kmep.dart';
 
 Future<void> main() async {
   final channel = ChannelClient(hl: 'en', gl: 'US');

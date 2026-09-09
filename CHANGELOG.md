@@ -37,6 +37,8 @@ KMEP runs on, including plain Dart servers.
 - Live-response fixtures (`test/fixtures/`) and 6 new unit tests —
   53 total, all green.
 - `example/example.dart` now demonstrates the full surface end-to-end.
+- **Package renamed `kmep_proto` → `kmep`** (see Breaking changes
+  below); the on-device test harness moved to `kmep_harness/`.
 
 ## 0.2.0 — Public API pass
 
@@ -96,9 +98,14 @@ closed-source "own" extractor is a copyright violation.
 - YouTube only — there is no NewPipe-style `StreamingService`
   abstraction for other sites. Multi-site support would be a 1.0-scope
   change, not a patch on top of this API.
-- Package is still named `kmep_proto` and depended on via a relative
-  path from Vidora. Renaming/publishing is a deliberate separate step
-  (see README "Status").
+- ~~Package still named `kmep_proto`~~ — **renamed to `kmep` in
+  0.3.0** (pubspec, imports, harness folder). Publishing to pub.dev
+  is a deliberate separate step.
+
+### Breaking changes
+- **Package renamed: `kmep_proto` → `kmep`.** Update your
+  `pubspec.yaml` dependency and `import 'package:kmep/kmep.dart';`.
+  The on-device test harness folder renamed to `kmep_harness/` too.
 
 ## 0.1.0 — Internal prototype
 

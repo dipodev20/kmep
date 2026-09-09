@@ -27,7 +27,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 
-import 'package:kmep_proto/kmep.dart';
+import 'package:kmep/kmep.dart';
 import 'webview_js_runtime.dart';
 
 const _desktopUA =
@@ -77,7 +77,7 @@ class HarnessApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'kmep-proto harness',
+        title: 'KMEP harness',
         theme: ThemeData.dark(useMaterial3: true),
         home: const TestScreen(),
       );
@@ -467,7 +467,7 @@ class _TestScreenState extends State<TestScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('kmep-proto harness')),
+        appBar: AppBar(title: const Text('KMEP harness')),
         body: Column(
           children: [
             Padding(

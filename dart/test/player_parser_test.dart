@@ -18,7 +18,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
-import 'package:kmep_proto/kmep.dart';
+import 'package:kmep/kmep.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 

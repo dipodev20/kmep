@@ -1,4 +1,4 @@
-# Flutter-обвязка kmep-proto: JsRuntime для мобильных.
+# Flutter-обвязка KMEP: JsRuntime для мобильных.
 # НЕ часть чистого Dart-пакета (dart/) — требует Flutter SDK.
 #
 # Два рантайма:
@@ -18,7 +18,7 @@ dependencies:
     sdk: flutter
   flutter_js: ^0.8.3
   flutter_inappwebview: ^6.1.5
-  kmep_proto:
+  kmep:
     path: ../dart
 dev_dependencies:
   flutter_test:

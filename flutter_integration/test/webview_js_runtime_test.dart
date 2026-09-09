@@ -16,7 +16,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import '../webview_js_runtime.dart';
-import 'package:kmep_proto/kmep.dart';
+import 'package:kmep/kmep.dart';
 
 /// Фейковый мост evaluateJavascript: возвращает заготовленные ответы по
 /// очереди (String ИЛИ уже распарсенный Map — мост flutter_inappwebview

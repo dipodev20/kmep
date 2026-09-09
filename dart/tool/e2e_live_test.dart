@@ -1,4 +1,4 @@
-// ЖИВОЙ e2e-тест всего Dart-пайплайна kmep-proto на реальном YouTube:
+// ЖИВОЙ e2e-тест всего Dart-пайплайна KMEP на реальном YouTube:
 //   watch-страница (STS + player.js URL)
 //     -> InnerTubeClient по каждому клиенту реестра
 //     -> PlayerParser
@@ -12,7 +12,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:kmep_proto/kmep.dart';
+import 'package:kmep/kmep.dart';
 
 const desktopUA =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';

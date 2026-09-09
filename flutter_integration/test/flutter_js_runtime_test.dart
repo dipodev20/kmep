@@ -17,7 +17,7 @@
 import 'package:flutter_js/flutter_js.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../flutter_js_runtime.dart';
-import 'package:kmep_proto/kmep.dart';
+import 'package:kmep/kmep.dart';
 
 /// Фейковый JavascriptRuntime: возвращает заготовленные результаты по
 /// очереди и записывает все исходники evaluate — проверяем ЛОГИКУ

@@ -25,14 +25,14 @@ jobs:
         run: flutter pub get
 
       - name: Pub get (harness)
-        working-directory: kmep_proto_harness
+        working-directory: kmep_harness
         run: flutter pub get
 
       - name: Build APK
-        working-directory: kmep_proto_harness
+        working-directory: kmep_harness
         run: flutter build apk --release
 
       - uses: actions/upload-artifact@v4
         with:
           name: kmep-proto-harness-apk
-          path: kmep_proto_harness/build/app/outputs/flutter-apk/app-release.apk
+          path: kmep_harness/build/app/outputs/flutter-apk/app-release.apk

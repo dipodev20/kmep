@@ -17,7 +17,7 @@
 import 'dart:convert';
 
 import 'package:flutter_js/flutter_js.dart';
-import 'package:kmep_proto/kmep.dart' show JsRuntime, KMEPException, KMEPErrorCode;
+import 'package:kmep/kmep.dart' show JsRuntime, KMEPException, KMEPErrorCode;
 
 /// JsRuntime поверх flutter_js.
 ///
