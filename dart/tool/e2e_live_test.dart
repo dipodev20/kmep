@@ -53,7 +53,8 @@ class WatchMeta {
 }
 
 Future<WatchMeta> fetchWatchMeta(String videoId) async {
-  final html = await httpGet('https://www.youtube.com/watch?v=$videoId&hl=en&gl=US');
+  final html =
+      await httpGet('https://www.youtube.com/watch?v=$videoId&hl=en&gl=US');
   final sts = RegExp(r'"STS":(\d+)').firstMatch(html)?.group(1);
   String? jsUrl;
   final m = RegExp(r'"jsUrl":"([^"]+base\.js)"').firstMatch(html) ??
@@ -114,7 +115,8 @@ Future<void> main(List<String> args) async {
     for (final clientId in clientsToTest) {
       final config = ClientRegistry.byId(clientId);
       final row = config.id == clientId
-          ? await _testClient(config, videoId, meta, loadPlayerJs(meta.playerJsUrl))
+          ? await _testClient(
+              config, videoId, meta, loadPlayerJs(meta.playerJsUrl))
           : Row(clientId, 'нет в реестре', 0, 0, 0, 0, '-');
       rows.add(row);
       stdout.writeln(
@@ -147,8 +149,9 @@ Future<Row> _testClient(
   try {
     final raw = await client.fetchPlayer(
       videoId,
-      signatureTimestamp:
-          config.id == 'WEB' || config.id == 'TV' ? meta.signatureTimestamp : null,
+      signatureTimestamp: config.id == 'WEB' || config.id == 'TV'
+          ? meta.signatureTimestamp
+          : null,
     );
     final status = raw['playabilityStatus']?['status']?.toString() ?? '?';
     final reason = raw['playabilityStatus']?['reason']?.toString() ?? '';
@@ -162,12 +165,13 @@ Future<Row> _testClient(
     final directNeedsN = rawFormats.any((f) =>
         f['url'] != null &&
         Uri.parse(f['url'] as String).queryParameters.containsKey('n'));
-    final sabrOnly = rawFormats.where((f) =>
-        f['url'] == null &&
-        f['signatureCipher'] == null &&
-        f['cipher'] == null).length;
-    final directList =
-        rawFormats.where((f) => f['url'] != null).toList();
+    final sabrOnly = rawFormats
+        .where((f) =>
+            f['url'] == null &&
+            f['signatureCipher'] == null &&
+            f['cipher'] == null)
+        .length;
+    final directList = rawFormats.where((f) => f['url'] != null).toList();
 
     var resolved = const <KMEPStream>[];
     var note = '';
@@ -189,9 +193,8 @@ Future<Row> _testClient(
           mimeType: mime,
         );
       }).toList();
-      note = directList.isEmpty
-          ? 'только SABR-дескрипторы ($sabrOnly)'
-          : 'без JS';
+      note =
+          directList.isEmpty ? 'только SABR-дескрипторы ($sabrOnly)' : 'без JS';
     } else {
       final playerJs = await loadPlayerJs();
       if (playerJs == null) {
@@ -205,7 +208,9 @@ Future<Row> _testClient(
       );
       try {
         resolved = await resolver.resolve(rawFormats, playerJsUrl: 'cached');
-        note = sabrOnly > 0 ? 'через player.js (SABR-дескрипторов: $sabrOnly)' : 'через player.js';
+        note = sabrOnly > 0
+            ? 'через player.js (SABR-дескрипторов: $sabrOnly)'
+            : 'через player.js';
       } on KMEPException catch (e) {
         note = 'resolver: ${e.message}';
       } finally {
@@ -217,8 +222,9 @@ Future<Row> _testClient(
     for (final s in resolved) {
       if ((s.height ?? -1) > (best?.height ?? -1)) best = s;
     }
-    final bestHttp =
-        best == null ? '-' : await rangeCheck(best.url).catchError((e) => 'ERR');
+    final bestHttp = best == null
+        ? '-'
+        : await rangeCheck(best.url).catchError((e) => 'ERR');
 
     return Row(config.id, status, rawFormats.length, direct, resolved.length,
         maxHeightOf(rawFormats), bestHttp, note);

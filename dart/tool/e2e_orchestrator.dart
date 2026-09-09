@@ -49,8 +49,8 @@ Future<void> main(List<String> args) async {
     videos.addAll(['dQw4w9WgXcQ', 'jNQXAC9IVRw', 'aqz-KE-bpKQ']);
   }
 
-  final jsRuntime = NodeProcessJsRuntime(
-      callTimeout: const Duration(seconds: 180));
+  final jsRuntime =
+      NodeProcessJsRuntime(callTimeout: const Duration(seconds: 180));
   final playerJsCache = <String, String>{};
 
   // POT-провайдер для --pot-js: отдельный рантайм (jsdom на глобале),
@@ -60,7 +60,8 @@ Future<void> main(List<String> args) async {
   if (potHttpUrl != null) {
     potProvider = BgutilHttpPoTokenProvider(baseUrl: potHttpUrl);
   } else if (potJs) {
-    final bgRuntime = NodeProcessJsRuntime(callTimeout: const Duration(seconds: 180));
+    final bgRuntime =
+        NodeProcessJsRuntime(callTimeout: const Duration(seconds: 180));
     bgJsRuntime = bgRuntime;
     potProvider = BotGuardJsPoTokenProvider(
       jsRuntime: bgRuntime,
@@ -138,8 +139,7 @@ if (!Reflect.has(globalThis, 'navigator')) {
     }
   }
 
-  stdout.writeln(
-      '\nИТОГ: $okCount/${videos.length} через оркестратор '
+  stdout.writeln('\nИТОГ: $okCount/${videos.length} через оркестратор '
       '(success rate ${(okCount / videos.length * 100).toStringAsFixed(0)}%)');
   orchestrator.dispose();
   jsRuntime.dispose();

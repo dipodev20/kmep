@@ -22,7 +22,8 @@ void main(List<String> args) async {
 
   stdout.writeln('== 1. Скачиваю watch-страницу для $videoId ==');
   final client = HttpClient();
-  final watchHtml = await _fetch(client, _watchUrlTemplate.replaceAll('%s', videoId));
+  final watchHtml =
+      await _fetch(client, _watchUrlTemplate.replaceAll('%s', videoId));
 
   stdout.writeln('== 2. Ищу URL player.js в HTML ==');
   final playerJsUrl = _extractPlayerJsUrl(watchHtml);
@@ -52,7 +53,8 @@ void main(List<String> args) async {
     return;
   }
 
-  stdout.writeln('Найдено анкеров: ${anchors.length}. Разбираю контекст каждого:\n');
+  stdout.writeln(
+      'Найдено анкеров: ${anchors.length}. Разбираю контекст каждого:\n');
 
   for (var i = 0; i < anchors.length; i++) {
     final m = anchors[i];

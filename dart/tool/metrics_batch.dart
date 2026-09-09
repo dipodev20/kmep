@@ -74,7 +74,8 @@ Future<List<String>> buildSample(int targetSize) async {
         // videoId повторяется во вложенных рендерерах одного результата,
         // поэтому дедуп до взятия первых N.
         final uniqueInResponse = found.toSet();
-        ids.addAll(uniqueInResponse.take(targetSize ~/ _searchQueries.length + 2));
+        ids.addAll(
+            uniqueInResponse.take(targetSize ~/ _searchQueries.length + 2));
         stdout.writeln('поиск "$q": ${found.length} упоминаний, '
             '${uniqueInResponse.length} уникальных');
         await Future.delayed(const Duration(milliseconds: 300));
@@ -89,17 +90,28 @@ Future<List<String>> buildSample(int targetSize) async {
   return ids.take(targetSize).toList();
 }
 
-enum Outcome { ok, botCheck, noStreams, apiRejected, rateLimited, urlRejected, other }
+enum Outcome {
+  ok,
+  botCheck,
+  noStreams,
+  apiRejected,
+  rateLimited,
+  urlRejected,
+  other
+}
 
 Outcome classify(String combined) {
   if (combined.contains('Sign in to confirm')) return Outcome.botCheck;
   if (combined.contains('No streams from') || combined.contains('SABR')) {
     return Outcome.noStreams;
   }
-  if (combined.contains('HTTP 400') || combined.contains('FAILED_PRECONDITION')) {
+  if (combined.contains('HTTP 400') ||
+      combined.contains('FAILED_PRECONDITION')) {
     return Outcome.apiRejected;
   }
-  if (combined.contains('rateLimited') || combined.contains('429')) return Outcome.rateLimited;
+  if (combined.contains('rateLimited') || combined.contains('429')) {
+    return Outcome.rateLimited;
+  }
   return Outcome.other;
 }
 
@@ -122,8 +134,11 @@ Future<void> main(List<String> args) async {
   }
   if (rest.isNotEmpty) targetSize = int.tryParse(rest[0]) ?? 50;
   if (rest.length > 1) {
-    fromFile =
-        File(rest[1]).readAsLinesSync().map((l) => l.trim()).where((l) => l.isNotEmpty && !l.startsWith('#')).toList();
+    fromFile = File(rest[1])
+        .readAsLinesSync()
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty && !l.startsWith('#'))
+        .toList();
   }
 
   final sample = fromFile ?? await buildSample(targetSize);
@@ -138,7 +153,8 @@ Future<void> main(List<String> args) async {
   final playerJsCache = <String, String>{};
   final orchestrator = ExtractionOrchestrator(
     config: const RemoteConfig(),
-    cache: InMemoryCacheManager(), // каждый videoId уникален, кэш почти не работает
+    cache:
+        InMemoryCacheManager(), // каждый videoId уникален, кэш почти не работает
     streamResolver: StreamResolver(
       jsRuntime: jsRuntime,
       fetchPlayerJs: (url) async {
@@ -191,7 +207,9 @@ Future<void> main(List<String> args) async {
       entry['outcome'] = ok ? 'ok' : 'urlRejected';
     } on KMEPException catch (e) {
       entry['outcome'] = classify('${e.code.name} ${e.message}').name;
-      entry['error'] = e.message.length > 300 ? '${e.message.substring(0, 300)}...' : e.message;
+      entry['error'] = e.message.length > 300
+          ? '${e.message.substring(0, 300)}...'
+          : e.message;
     } catch (e) {
       entry['outcome'] = 'other';
       entry['error'] = '$e';
@@ -221,7 +239,8 @@ Future<void> main(List<String> args) async {
   }
   final okCount = counts['ok'] ?? 0;
   stdout.writeln('\n======== SUCCESS RATE ========');
-  for (final e in counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value))) {
+  for (final e in counts.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value))) {
     stdout.writeln('${e.key.padRight(12)} ${e.value.toString().padLeft(3)}  '
         '${(e.value / reports.length * 100).toStringAsFixed(1)}%');
   }
@@ -229,8 +248,11 @@ Future<void> main(List<String> args) async {
       '${(okCount / reports.length * 100).toStringAsFixed(1)}%');
 
   final reportFile = '/tmp/opencode/kmep_metrics.json';
-  File(reportFile).writeAsStringSync(
-      JsonEncoder.withIndent('  ').convert({'generatedAt': DateTime.now().toIso8601String(), 'total': reports.length, 'results': reports}));
+  File(reportFile).writeAsStringSync(JsonEncoder.withIndent('  ').convert({
+    'generatedAt': DateTime.now().toIso8601String(),
+    'total': reports.length,
+    'results': reports
+  }));
   stdout.writeln('Отчёт: $reportFile');
 
   orchestrator.dispose();

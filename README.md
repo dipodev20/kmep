@@ -142,6 +142,58 @@ is pure Dart, for apps that don't want a JVM dependency. It's a
 complement, not a replacement — this library's own router falls back to
 NewPipeExtractor on any failure in the app it was built for.
 
+## ⚔️ FAQ: "why not just use yt-dlp?"
+
+yt-dlp is the de-facto industry standard and a magnificent one — its
+client research directly informed KMEP's client matrix. But it solves a
+different problem:
+
+**"just bind it with ffigen/jnigen"** — yt-dlp is *Python*; ffigen binds
+C and jnigen binds JVM, neither applies. Real-world options are shipping
+a Python runtime with your app (≈80+ MB, separate process management) or
+running it on a server (which is exactly what KMEP lets you avoid).
+
+| | yt-dlp (CLI / server) | KMEP (in-process) |
+|---|---|---|
+| Runtime | Python interpreter | pure Dart, no embed |
+| Cold start (process + one video) | ~11.8 s * | ~7 s incl. player.js bootstrap * |
+| Warm extraction, same video | — (cache-less) | **0.00 s** (built-in cache) |
+| Formats returned | depends on `-f` (4 with `best`) | all 27 (no format picker needed) |
+| Live in a Flutter app | via server/process spawn | a Dart object |
+| Zero-dependency on-device PO token | external bgutil server/WS | built-in (BotGuard, on-device) |
+| Search/channels/playlists/comments API | CLI/JSON munging | typed Dart API |
+
+\* Same device, same `android_vr` client, same IP, September 2026 —
+see `tool/e2e_live_test.dart` and `docs/AGENT_HANDOFF.md` for
+methodology. Both engines hit the same YouTube IP reputation limits;
+neither is magically exempt from "Sign in to confirm you're not a bot".
+
+**License note** — yt-dlp is [Unlicense](https://api.github.com/repos/yt-dlp/yt-dlp/license)
+(public domain), so Ray De'Blois is right that it's maximally permissive.
+KMEP chose GPLv3 for the same reason NewPipe did: this codebase is
+weeks of reverse-engineering (on-device BotGuard, nsig discovery, client
+matrix calibration), and copyleft keeps competitors from rebranding it
+closed-source. If your project can't live with GPL-3.0-or-later, the
+Unlicensed yt-dlp remains a great choice — they can even coexist:
+KMEP's production router falls back to NewPipeExtractor.
+
+**"where are the performance tests"** — fair. Live numbers are above
+(same-IP, same-client, apples-to-apples); the methodology and the raw
+runs are reproducible with the tools in this repo. Contributions with
+benchmarks from other devices are welcome.
+
+## 🗄️ What is `backend/` then?
+
+A prototype **emergency fallback**, not a required component: a tiny
+FastAPI service that shells out to yt-dlp *as a last resort* when every
+on-device client fails (e.g. hostile IP reputation with no POT). It is
+**optional, unused by the main library** (the Dart `Kmep` runs fully
+on-device), disabled by not wiring `ExtractionOrchestrator.backendFallback`,
+and kept here because it documented the survival path during the
+prototype phase. The library itself does not import or require it —
+it's one Python file you can delete without touching anything else.
+
+
 ## 🔌 Platform integration
 
 KMEP needs a `JsRuntime` — something that can execute a real `player.js`

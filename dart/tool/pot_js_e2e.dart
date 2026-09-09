@@ -20,8 +20,7 @@ const _desktopUA =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
 /// Путь к установленному jsdom (десктопная диагностика, не прод).
-const _jsdomPath =
-    '/tmp/opencode/bgutil/server/node_modules/jsdom';
+const _jsdomPath = '/tmp/opencode/bgutil/server/node_modules/jsdom';
 
 /// JS-часть окружения для десктопного прогона: jsdom на глобале child-
 /// процесса. В WebViewJsRuntime (прод) этот часть НЕ нужна — там настоящие
@@ -54,7 +53,9 @@ Future<String> httpGetString(String url,
     req.headers.set('User-Agent', _desktopUA);
     headers.forEach(req.headers.set);
     final resp = await req.close();
-    if (resp.statusCode >= 300 && resp.statusCode < 400 && resp.headers.value('location') != null) {
+    if (resp.statusCode >= 300 &&
+        resp.statusCode < 400 &&
+        resp.headers.value('location') != null) {
       final location = resp.headers.value('location')!;
       await resp.drain<void>();
       return await httpGetString(location, headers: headers);
@@ -89,7 +90,8 @@ Future<void> main(List<String> args) async {
   // ВАЖНО: на ARM-девайсах require(jsdom)+JSDOM занимает до 40 с —
   // callTimeout должен покрывать это (кэш require действует внутри
   // одного child-процесса).
-  final bgRuntime = NodeProcessJsRuntime(callTimeout: const Duration(seconds: 180));
+  final bgRuntime =
+      NodeProcessJsRuntime(callTimeout: const Duration(seconds: 180));
   final provider = BotGuardJsPoTokenProvider(
     jsRuntime: bgRuntime,
     fetchText: (url) => httpGetString(url),
@@ -114,7 +116,8 @@ Future<void> main(List<String> args) async {
   sw.reset();
   final pot2 = await provider.tokenFor(t2videoId);
   sw.stop();
-  stdout.writeln('[${sw.elapsedMilliseconds} ms] POT("$t2videoId") из той же сессии: '
+  stdout.writeln(
+      '[${sw.elapsedMilliseconds} ms] POT("$t2videoId") из той же сессии: '
       '${pot2 != null ? "ok (${pot2.length} симв)" : "FAIL: ${provider.lastError}"}');
 
   // --- 2. Watch-мета для WEB-запроса ---
@@ -122,12 +125,12 @@ Future<void> main(List<String> args) async {
       'https://www.youtube.com/watch?v=$videoId&hl=en&gl=US');
   final vdMatch =
       RegExp(r'"VISITOR_DATA":"((?:[^"\\]|\\.)*)"').firstMatch(watchHtml);
-  final watchVd = vdMatch != null
-      ? jsonDecode('"${vdMatch.group(1)}"') as String
-      : null;
-  final sts = int.parse(
-      RegExp(r'"STS":(\d+)').firstMatch(watchHtml)?.group(1) ?? '0');
-  stdout.writeln('watch-мета: sts=$sts, visitorData=${watchVd?.substring(0, 12)}...');
+  final watchVd =
+      vdMatch != null ? jsonDecode('"${vdMatch.group(1)}"') as String : null;
+  final sts =
+      int.parse(RegExp(r'"STS":(\d+)').firstMatch(watchHtml)?.group(1) ?? '0');
+  stdout.writeln(
+      'watch-мета: sts=$sts, visitorData=${watchVd?.substring(0, 12)}...');
 
   // --- 3. WEB player запрос с токеном (serviceIntegrityDimensions) ---
   Future<Map<String, dynamic>> playerReq(String? potParam) async {
@@ -144,13 +147,15 @@ Future<void> main(List<String> args) async {
       },
       'contentCheckOk': true,
       'racyCheckOk': true,
-      'playbackContext': {'contentPlaybackContext': {'signatureTimestamp': sts}},
+      'playbackContext': {
+        'contentPlaybackContext': {'signatureTimestamp': sts}
+      },
       'serviceIntegrityDimensions': {'poToken': potParam},
     });
     final client = HttpClient();
     try {
-      final req = await client
-          .postUrl(Uri.parse('https://www.youtube.com/youtubei/v1/player?prettyPrint=false'));
+      final req = await client.postUrl(Uri.parse(
+          'https://www.youtube.com/youtubei/v1/player?prettyPrint=false'));
       req.headers.set('Content-Type', 'application/json');
       req.headers.set('User-Agent', _desktopUA);
       req.headers.set('X-YouTube-Client-Name', '1');
@@ -169,8 +174,7 @@ Future<void> main(List<String> args) async {
   final j = await playerReq(pot);
   final status = j['playabilityStatus']?['status'];
   final formats = <Map<String, dynamic>>[
-    ...?(j['streamingData']?['formats'] as List?)
-        ?.cast<Map<String, dynamic>>(),
+    ...?(j['streamingData']?['formats'] as List?)?.cast<Map<String, dynamic>>(),
     ...?(j['streamingData']?['adaptiveFormats'] as List?)
         ?.cast<Map<String, dynamic>>(),
   ];
@@ -194,28 +198,29 @@ Future<void> main(List<String> args) async {
     if (playerJsUrl == null) {
       stdout.writeln('playerJsUrl не найден в watch-странице');
     } else {
-    final resolverRuntime = NodeProcessJsRuntime(callTimeout: const Duration(seconds: 180));
-    final playerJsCache = <String, String>{};
-    final resolver = StreamResolver(
-      jsRuntime: resolverRuntime,
-      fetchPlayerJs: (url) async {
-        if (playerJsCache.containsKey(url)) return playerJsCache[url]!;
-        final content = await httpGetString(url);
-        playerJsCache[url] = content;
-        return content;
-      },
-    );
-    try {
-      final streams = await resolver.resolve(
-          formats.cast<Map<String, dynamic>>(),
-          playerJsUrl: playerJsUrl);
-      stdout.writeln('StreamResolver: ${streams.length} стримов разрешено');
-      resolved = streams.first.url;
-    } on KMEPException catch (e) {
-      stdout.writeln('StreamResolver FAIL: [${e.code.name}] ${e.message}');
-    } finally {
-      resolverRuntime.dispose();
-    }
+      final resolverRuntime =
+          NodeProcessJsRuntime(callTimeout: const Duration(seconds: 180));
+      final playerJsCache = <String, String>{};
+      final resolver = StreamResolver(
+        jsRuntime: resolverRuntime,
+        fetchPlayerJs: (url) async {
+          if (playerJsCache.containsKey(url)) return playerJsCache[url]!;
+          final content = await httpGetString(url);
+          playerJsCache[url] = content;
+          return content;
+        },
+      );
+      try {
+        final streams = await resolver.resolve(
+            formats.cast<Map<String, dynamic>>(),
+            playerJsUrl: playerJsUrl);
+        stdout.writeln('StreamResolver: ${streams.length} стримов разрешено');
+        resolved = streams.first.url;
+      } on KMEPException catch (e) {
+        stdout.writeln('StreamResolver FAIL: [${e.code.name}] ${e.message}');
+      } finally {
+        resolverRuntime.dispose();
+      }
     }
   } else if (direct > 0) {
     resolved = (formats.firstWhere((f) => f['url'] != null))['url'] as String;

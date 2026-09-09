@@ -13,8 +13,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:kmep/kmep.dart';
 
-const _ua =
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+const _ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
     '(KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
 Future<String> _fetchText(String url) async {
@@ -24,8 +23,8 @@ Future<String> _fetchText(String url) async {
     'Accept-Language': 'en-US,en;q=0.7',
   }).timeout(const Duration(seconds: 30));
   if (resp.statusCode != 200) {
-    throw KMEPException(KMEPErrorCode.networkError,
-        'GET $url -> HTTP ${resp.statusCode}');
+    throw KMEPException(
+        KMEPErrorCode.networkError, 'GET $url -> HTTP ${resp.statusCode}');
   }
   return resp.body;
 }
@@ -52,7 +51,8 @@ if (!Reflect.has(globalThis, 'navigator')) {
 Future<void> main(List<String> args) async {
   final videos = args.isNotEmpty ? args : ['jNQXAC9IVRw'];
   final t0 = Stopwatch()..start();
-  final runtime = NodeProcessJsRuntime(callTimeout: const Duration(seconds: 120));
+  final runtime =
+      NodeProcessJsRuntime(callTimeout: const Duration(seconds: 120));
   final resolverRuntime =
       NodeProcessJsRuntime(callTimeout: const Duration(seconds: 120));
   final playerJsCache = <String, String>{};
@@ -76,8 +76,7 @@ Future<void> main(List<String> args) async {
   // --- Цикл провайдера: биндинг videoId ---
   final sw = Stopwatch()..start();
   final potVid = await provider.tokenFor(videos.first);
-  stdout.writeln(
-      '[${sw.elapsedMilliseconds} ms] tokenFor(${videos.first}) -> '
+  stdout.writeln('[${sw.elapsedMilliseconds} ms] tokenFor(${videos.first}) -> '
       '${potVid == null ? "NULL (${provider.lastError})" : "${potVid.length} симв."}');
 
   // Второй вызов должен пойти по кэшу минтера (без нового GenerateIT).
@@ -100,9 +99,8 @@ Future<void> main(List<String> args) async {
     final watchVd = meta?.visitorData;
 
     // POT с биндингом visitorData этой страницы (для WEB без эксперимента).
-    final potForVideoBinding = videos.contains(videoId)
-        ? await provider.tokenFor(videoId)
-        : null;
+    final potForVideoBinding =
+        videos.contains(videoId) ? await provider.tokenFor(videoId) : null;
 
     Future<void> check(String label, String? pot, String? vd) async {
       totalChecks++;
@@ -115,30 +113,32 @@ Future<void> main(List<String> args) async {
           visitorData: vd,
         );
         client.close();
-        final status =
-            (raw['playabilityStatus']?['status'] ?? '?').toString();
+        final status = (raw['playabilityStatus']?['status'] ?? '?').toString();
         final reason = raw['playabilityStatus']?['reason'];
         final formats = PlayerParser.rawFormats(raw);
         final direct = formats.where((f) => f['url'] != null).length;
-        final cipher = formats.where((f) =>
-            f['signatureCipher'] != null || f['cipher'] != null).length;
+        final cipher = formats
+            .where((f) => f['signatureCipher'] != null || f['cipher'] != null)
+            .length;
         stdout.writeln('[$label] status=$status форматов=${formats.length} '
             '(прямых=$direct cipher=$cipher sabr=${formats.length - direct - cipher})'
             '${reason != null ? " :: ${"$reason".characters.take(60)}" : ""}');
 
         // Range-чек первого прямого URL с pot= и без.
         String? url;
-        var resolvable = formats.where((f) =>
-            f['signatureCipher'] != null ||
-            f['cipher'] != null ||
-            (f['url'] != null &&
-                Uri.parse(f['url'] as String)
-                    .queryParameters
-                    .containsKey('n'))).toList();
+        var resolvable = formats
+            .where((f) =>
+                f['signatureCipher'] != null ||
+                f['cipher'] != null ||
+                (f['url'] != null &&
+                    Uri.parse(f['url'] as String)
+                        .queryParameters
+                        .containsKey('n')))
+            .toList();
         if (resolvable.isNotEmpty && meta?.playerJsUrl != null && pot != null) {
           // Полный прод-путь: cipher/n через player.js (n-трансформация).
-          final streams = await resolver.resolve(formats,
-              playerJsUrl: meta!.playerJsUrl!);
+          final streams =
+              await resolver.resolve(formats, playerJsUrl: meta!.playerJsUrl!);
           url = streams.isEmpty ? null : streams.first.url;
           if (url == null) {
             stdout.writeln('[$label] resolve дал 0 стримов');
