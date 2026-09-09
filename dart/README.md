@@ -1,6 +1,6 @@
 # kmep
 
-[![Dart CI](https://github.com/dipodev20/vidora-kmep-proto/actions/workflows/dart_ci.yml/badge.svg)](https://github.com/dipodev20/vidora-kmep-proto/actions/workflows/dart_ci.yml)
+[![Dart CI](https://github.com/dipodev20/kmep/actions/workflows/dart_ci.yml/badge.svg)](https://github.com/dipodev20/kmep/actions/workflows/dart_ci.yml)
 [![License: GPLv3](https://img.shields.io/badge/license-GPLv3-blue.svg)](../LICENSE)
 
 Dart package for the KMEP YouTube extraction library. See the

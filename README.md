@@ -5,8 +5,8 @@
 # KMEP
 
 <p align="center">
-  <a href="https://github.com/dipodev20/vidora-kmep-proto/actions/workflows/dart_ci.yml">
-    <img src="https://github.com/dipodev20/vidora-kmep-proto/actions/workflows/dart_ci.yml/badge.svg" alt="Dart CI" />
+  <a href="https://github.com/dipodev20/kmep/actions/workflows/dart_ci.yml">
+    <img src="https://github.com/dipodev20/kmep/actions/workflows/dart_ci.yml/badge.svg" alt="Dart CI" />
   </a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-blue.svg" alt="License: GPLv3" /></a>
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.3.0-orange.svg" alt="Version 0.3.0" /></a>
@@ -62,7 +62,7 @@ Not on pub.dev yet. Depend on it via git or path:
 dependencies:
   kmep:
     git:
-      url: https://github.com/dipodev20/vidora-kmep-proto
+      url: https://github.com/dipodev20/kmep
       path: dart
 ```
 
