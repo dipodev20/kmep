@@ -10,9 +10,10 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-0078D7?style=for-the-badge&logo=gnu" alt="License: GPLv3" /></a>
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.3.0-FF4F00?style=for-the-badge&logo=git&logoColor=white" alt="Version 0.3.0" /></a>
-  <a href="https://www.dart.dev"><img src="https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart" /></a>
-  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" /></a>
+  <a href="https://pub.dev/packages/kmep"><img src="https://img.shields.io/pub/v/kmep?style=for-the-badge&logo=dart&logoColor=white" alt="pub.dev version" /></a>
+  <a href="https://pub.dev/packages/kmep"><img src="https://img.shields.io/pub/likes/kmep?style=for-the-badge&logo=flutter&logoColor=white&label=likes" alt="pub.dev likes" /></a>
+  <a href="https://pub.dev/packages/kmep"><img src="https://img.shields.io/pub/points/kmep?style=for-the-badge&color=2E7D32&label=points" alt="pub.dev points" /></a>
+  <a href="https://pub.dev/packages/kmep"><img src="https://img.shields.io/badge/pub.dev-kmep-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="pub.dev package" /></a>
   <a href="https://github.com/dipodev20/kmep/stargazers"><img src="https://img.shields.io/github/stars/dipodev20/kmep?style=for-the-badge&logo=github&color=FFD700" alt="Stars" /></a>
 </p>
 
