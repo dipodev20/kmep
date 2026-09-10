@@ -151,7 +151,7 @@ final kmep = Kmep.withOnDevicePoToken(
 final video    = await kmep.getVideo('dQw4w9WgXcQ'); // 27 стримов
 final results  = await kmep.search('lofi hip hop');
 final channel  = await kmep.getChannel('UC-lHJZR3Gqxm24_Vd_AJ5Yw');
-final playlist = await kmep.getPlaylist('PL...');
+final playlist = await kmep.getPlaylist('PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI');
 final comments = await kmep.getComments('dQw4w9WgXcQ');
 ```
 
