@@ -93,7 +93,7 @@ rate from a month in production. GPL-3.0-or-later.
 
 ## 4. awesome (sindresorhus/awesome) — лист "awesome" не принимает
    отдельные проекты, только сами списки. ПРОПУСТИТЬ. Вместо него:
-   pub.dev (см. ниже, задача отдельная) и awesome-selfhosted.
+   pub.dev (✅ сделано) и awesome-selfhosted.
 
 ## 5. awesome-selfhosted (github.com/awesome-selfhosted/awesome-selfhosted)
 
@@ -158,7 +158,7 @@ GPLv3, pre-1.0, production-tested in a daily-driver Android app.
 
 | Где | Что подавать | Заметка |
 |---|---|---|
-| **pub.dev** | `dart publish` из `dart/` | сейчас `publish_to: none`; главная будущая точка входа для Dart-разработчиков. Перед публикацией: убрать path-only зависимости, заменить git-ссылку в README |
+| **pub.dev** | ✅ опубликовано 2026-09-10: https://pub.dev/packages/kmep (0.3.0) | install через `kmep: ^0.3.0` |
 | **llmshub / awesome-mcp-servers** | не применимо: KMEP не MCP-сервер | если появится демо-MCP поверх KMEP (например, "search YouTube" tool) — тогда да, и это сильный ход для discoverability |
 | **GitHub Topics** | уже сделано (20 topics) | см. задачу 1 |
 | **Social preview** | только через web UI: Settings → Social preview → upload `branding/cover.png` | API-эндпоинт для этого отсутствует, руками через браузер |
@@ -171,4 +171,4 @@ GPLv3, pre-1.0, production-tested in a daily-driver Android app.
 1. **awesome-dart** (наиболее релевантный аудиторий, лёгкий приём)
 2. **awesome-flutter** (sindresorhus строг, но строка формата их правил)
 3. **awesome-youtube** (нишевый, но целевой)
-4. pub.dev — после стабилизации API (отдельная задача)
+4. pub.dev — ✅ опубликовано: https://pub.dev/packages/kmep (0.3.0)

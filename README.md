@@ -170,7 +170,14 @@ that combination had no production-tested option before this.
 
 ## How to install and use KMEP
 
-**1. Depend on it** (pub.dev publishing is planned; today it's git):
+**1. Depend on it** — published on pub.dev:
+
+```yaml
+dependencies:
+  kmep: ^0.3.0
+```
+
+(or via git, if you need unreleased changes:)
 
 ```yaml
 dependencies:

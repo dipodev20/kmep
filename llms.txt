@@ -29,12 +29,11 @@ month, holding a 98% (49/50) live-audited success rate.
 
 ## Install
 
+Published on pub.dev: https://pub.dev/packages/kmep
+
 ```yaml
 dependencies:
-  kmep:
-    git:
-      url: https://github.com/dipodev20/kmep
-      path: dart
+  kmep: ^0.3.0
 ```
 
 ```dart
