@@ -11,21 +11,22 @@ description: >
   (49/50 live-audited). Pre-1.0 — see CHANGELOG.md.
 version: 0.3.0
 publish_to: 'none'
+license: GPL-3.0-or-later
 homepage: https://github.com/dipodev20/kmep
 repository: https://github.com/dipodev20/kmep
 issue_tracker: https://github.com/dipodev20/kmep/issues
 documentation: https://github.com/dipodev20/kmep/blob/main/dart/README.md
 keywords:
+  - newpipe
   - youtube
   - extractor
-  - newpipe
-  - innertube
+  - dart
   - flutter
+  - innertube
   - po-token
   - botguard
-  - player-js
-  - video
-  - downloader
+  - yt-dlp
+  - freetube
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -41,3 +42,13 @@ dependencies:
 dev_dependencies:
   test: ^1.24.0
   lints: ^3.0.0
+
+# Проверка pub на «утечки ключей» ругается на InnerTube-константы
+# (AIzaSy…). Это ПУБЛИЧНЫЕ константы клиентов YouTube — те же строки
+# в открытых репо yt-dlp и NewPipeExtractor, секретами не являются:
+# любой клиент YouTube обязан слать их в каждом запросе.
+false_secrets:
+  - lib/src/core/botguard_pot_provider.dart
+  - player_js_dump.js
+  - tool/client_matrix.js
+  - tool/find_nsig.js
