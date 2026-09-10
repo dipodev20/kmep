@@ -1,15 +1,31 @@
 name: kmep
 description: >
-  KMEP — a YouTube extraction library for Dart: InnerTube multi-client
-  fallback, on-device player.js execution for signature/n resolution,
-  on-device PO token (BotGuard) generation, search, shorts feed,
-  channels, playlists and comments. Public API is the Kmep facade
-  class (see lib/kmep.dart). Pre-1.0, API not yet stable — see
-  CHANGELOG.md.
+  KMEP — a stable alternative to NewPipeExtractor for Dart and Flutter:
+  a YouTube extractor running fully in-process (no JVM, no Python, no
+  server). InnerTube multi-client fallback (ANDROID_VR/WEB/IOS/
+  WEB_SAFARI/TV, runtime-tunable via remote config), on-device
+  player.js execution for signature/n resolution, on-device PO token
+  (BotGuard) generation, videos up to 4K, live/HLS, search, shorts,
+  channels, playlists and comments — behind the typed Kmep facade
+  class (see lib/kmep.dart). Production-tested: 98% success rate
+  (49/50 live-audited). Pre-1.0 — see CHANGELOG.md.
 version: 0.3.0
 publish_to: 'none'
 homepage: https://github.com/dipodev20/kmep
 repository: https://github.com/dipodev20/kmep
+issue_tracker: https://github.com/dipodev20/kmep/issues
+documentation: https://github.com/dipodev20/kmep/blob/main/dart/README.md
+keywords:
+  - youtube
+  - extractor
+  - newpipe
+  - innertube
+  - flutter
+  - po-token
+  - botguard
+  - player-js
+  - video
+  - downloader
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

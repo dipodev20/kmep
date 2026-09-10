@@ -1,3 +1,17 @@
+# AGENT_HANDOFF — evidence trail & methodology (KMEP)
+
+> **What this file is:** the project's engineering memory — every claim
+> in the README (98% success rate, on-device PO token proof, client
+> fragility notes) is sourced here. Read before touching extraction
+> logic; update after any live-traffic finding.
+>
+> **Quick navigation:** [Кто где: разделение ролей](#кто-где-разделение-ролей) ·
+> [Структура репозитория](#структура-репозитория) ·
+> [Следующие шаги](#следующие-шаги-бывшая-главная-задача-закрыта) ·
+> [Общие правила работы](#общие-правила-работы-в-этом-репо)
+
+---
+
 > **НОЧНАЯ СЕССИЯ 2026-08-24 (Vidora, «пока владелец спит») — 6 коммитов,
 > все CI-green.** Разобран файл /sdcard/настройки (каталог настроек
 > NewPipe-подобного клиента). ВЗЯТО в Vidora: регион контента (gl),

@@ -1,0 +1,77 @@
+# KMEP
+
+> KMEP is a YouTube extraction library written in pure Dart — a stable,
+> production-tested alternative to NewPipeExtractor for Flutter and
+> Dart applications. It extracts videos (up to 4K), streams, search,
+> shorts, channels, playlists and comments directly on-device via
+> YouTube's InnerTube API, with no JVM, no Python runtime, and no
+> backend server.
+
+KMEP runs the full extraction pipeline in-process: multi-client
+InnerTube fallback (ANDROID_VR → WEB → IOS → WEB_SAFARI → TV), real
+`player.js` execution for signature/`n`-parameter reversal, and
+on-device BotGuard PO token generation. It has been the default
+extraction engine of the Vidora Android app in production for over a
+month, holding a 98% (49/50) live-audited success rate.
+
+## Key features
+
+- Video metadata + resolved stream URLs — all formats YouTube serves, up to 4K, live/HLS
+- Multi-client InnerTube fallback: ANDROID_VR → WEB → IOS → WEB_SAFARI → TV, runtime-tunable via RemoteConfig
+- On-device signature/`n` resolution via real `player.js` execution (WebView or Node.js runtime)
+- On-device PO token generation (BotGuard) — no bgutil server, no external services
+- Search (typed results, paginated) and shorts-only feed
+- Channels: header, tabs, videos with pagination, shorts/live tabs
+- Playlists: header + full video pagination
+- Comments: top/newest sorting, pages, thread replies, pinned/hearted/verified
+- Pure Dart core with typed API — `Kmep` facade class
+- GPL-3.0-or-later, pre-1.0 (v0.3.0)
+
+## Install
+
+```yaml
+dependencies:
+  kmep:
+    git:
+      url: https://github.com/dipodev20/kmep
+      path: dart
+```
+
+```dart
+import 'package:kmep/kmep.dart';
+
+final kmep = Kmep.withOnDevicePoToken(
+  jsRuntime: myPlayerJsRuntime,    // WebViewJsRuntime on Flutter
+  potJsRuntime: myBotGuardRuntime, // a separate JS context
+  fetchText: (url) => http.get(Uri.parse(url)).then((r) => r.body),
+);
+
+final video = await kmep.getVideo('dQw4w9WgXcQ');
+```
+
+## KMEP vs NewPipeExtractor
+
+| | KMEP | NewPipeExtractor |
+|---|---|---|
+| Language / runtime | Pure Dart | Java/Kotlin (JVM) |
+| Integration | Native Flutter/Dart app dependency | Requires JVM or platform bridges |
+| PO tokens | On-device BotGuard, built-in | External tooling / not built-in |
+| Client fallback | 5 InnerTube clients, runtime-tunable | Multi-client (YouTube only) |
+| Remote config (fix without release) | Yes, RemoteConfig + circuit breaker | No |
+| Typed API surface | Yes (Kmep facade) | StreamInfo objects, JVM-centric |
+| License | GPL-3.0-or-later | GPL-3.0 |
+
+## Documentation
+
+- README (install, usage, architecture, honest limitations): https://github.com/dipodev20/kmep/blob/main/README.md
+- CHANGELOG (Keep a Changelog format): https://github.com/dipodev20/kmep/blob/main/CHANGELOG.md
+- Evidence trail & methodology (AGENT_HANDOFF): https://github.com/dipodev20/kmep/blob/main/docs/AGENT_HANDOFF.md
+- Package layout & dev quickstart (dart/README.md): https://github.com/dipodev20/kmep/blob/main/dart/README.md
+- Contributing guide: https://github.com/dipodev20/kmep/blob/main/CONTRIBUTING.md
+- Live benchmark tool: https://github.com/dipodev20/kmep/blob/main/dart/tool/bench_kmep.dart
+
+## License
+
+GPL-3.0-or-later. Free to use, study, modify and redistribute,
+including commercially — derivatives must stay open under GPLv3 and
+credit this project. Full text: https://github.com/dipodev20/kmep/blob/main/LICENSE

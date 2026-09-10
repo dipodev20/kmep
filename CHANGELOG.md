@@ -1,13 +1,26 @@
 # Changelog
 
-## 0.3.0 — Channels, playlists, comments
+All notable changes to KMEP are documented in this file.
 
-The three big "not yet" items from 0.2.0 are done. All of them ride
-the unauthenticated InnerTube WEB client (same as search — no JS
-runtime, no PO token, no player.js), so they work on every platform
-KMEP runs on, including plain Dart servers.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
+(pre-1.0: minor versions may carry breaking changes, noted below).
+
+## [Unreleased]
+
+- pub.dev publishing is planned once the API settles (issue tracked in
+  README "Status").
+- Multi-site support is explicitly out of scope for the 1.0 horizon.
+
+## [0.3.0] — 2026-09-10
+
+The three big "not yet" items from 0.2.0 are done: channels, playlists,
+comments. All of them ride the unauthenticated InnerTube WEB client
+(same as search — no JS runtime, no PO token, no player.js), so they
+work on every platform KMEP runs on, including plain Dart servers.
 
 ### Added
+
 - **Channels** (`lib/src/channel/channel_client.dart`): full header
   metadata (title, handle, avatar, banner, subscriber/video counts,
   description, social links, available tabs) plus the Videos tab with
@@ -34,81 +47,100 @@ KMEP runs on, including plain Dart servers.
   `getCommentsByContinuation`, `getCommentReplies`.
 - New models: `ChannelVideosPage`, `PlaylistInfo`, `PlaylistVideosPage`,
   `CommentsPage`; `KMEPErrorCode.playlistUnavailable`.
-- Live-response fixtures (`test/fixtures/`) and 6 new unit tests —
-  53 total, all green.
-- `example/example.dart` now demonstrates the full surface end-to-end.
-- **Package renamed `kmep_proto` → `kmep`** (see Breaking changes
-  below); the on-device test harness moved to `kmep_harness/`.
+- Live-response fixtures (`dart/test/fixtures/`) and 6 new unit
+  tests — 53 total, all green.
+- `dart/example/example.dart` now demonstrates the full surface
+  end-to-end.
+- `dart/tool/bench_kmep.dart` — reproducible live benchmark (cold
+  bootstrap vs cached extraction), with a matching yt-dlp comparison
+  command documented alongside.
+- `llms.txt` — machine-readable project summary for AI assistants
+  and crawlers.
 
-## 0.2.0 — Public API pass
+### Changed
 
-This release turns the internal prototype into something meant to be
-depended on from outside Vidora. No extraction logic changed — the
-InnerTube clients, `player.js` execution, and BotGuard PO token flow
-are untouched and keep the ~98% success rate this prototype validated
-in production. What changed is the *shape* of the library:
+- **Package renamed: `kmep_proto` → `kmep`** (see Breaking changes
+  below); repository renamed to `dipodev20/kmep`; the on-device test
+  harness moved to `kmep_harness/` (incl. Android namespace).
+- **License switched from MIT to GPL-3.0-or-later**, the same license
+  as NewPipe: this project is weeks of reverse-engineering work
+  (on-device BotGuard, multi-client InnerTube fallback, real
+  `player.js` execution) and copyleft keeps derivatives open.
+  Taking this code, renaming it and shipping it closed-source is a
+  copyright violation.
+
+### Breaking changes
+
+- Package renamed `kmep_proto` → `kmep`: update the dependency name in
+  `pubspec.yaml` and imports to `package:kmep/kmep.dart`.
+- `SearchResultPage.results` is now `List<VideoSearchResult>`
+  (was `List<dynamic>` in 0.1.0).
+
+### Fixed
+
+- (none beyond the above in 0.3.0)
+
+## [0.2.0] — 2026-09-09
+
+Turned the internal prototype into something meant to be depended on
+from outside Vidora. No extraction logic changed — the InnerTube
+clients, `player.js` execution, and BotGuard PO token flow are
+untouched and keep the ~98% success rate validated in production.
+What changed is the *shape* of the library.
 
 ### Added
-- **`Kmep` facade** (`lib/src/kmep_client.dart`) — one class to construct
-  instead of wiring `ExtractionOrchestrator` + `StreamResolver` +
-  `CachedWatchPageMetaProvider` + `BotGuardJsPoTokenProvider` by hand.
-  `Kmep.withOnDevicePoToken(...)` is the one-call setup for the common
-  case (on-device PO tokens, one shared cached watch-page provider).
-- **Search and shorts feed are now part of the library**
-  (`lib/src/search/search_client.dart`), typed as `VideoSearchResult` /
-  `SearchResultPage` / `ShortsFeedPage` instead of raw
-  `Map<String, dynamic>`. This logic previously lived duplicated in the
-  Vidora app's platform-channel glue code; it's YouTube-extraction logic
-  like everything else here, so it belongs in the library.
-- **`CachedWatchPageMetaProvider`** — a small TTL-caching decorator for
-  `WatchPageMetaProvider`. Previously each app integrating this library
-  had to write its own (Vidora did). Promoted into the library so the
-  fix isn't reinvented per consumer.
-- **`BotGuardJsPoTokenProvider.bindingFor`** — an async
-  `Future<String?> Function(String videoId)` alternative to the existing
-  synchronous `bindingResolver`. The synchronous map-based API doesn't
-  fit the common case of resolving the binding from a network call (e.g.
-  `visitorData` from the watch page); `bindingFor` does, and is now what
-  `Kmep.withOnDevicePoToken` uses internally.
-- Curated public export surface in `lib/kmep.dart`, grouped by purpose
-  (entry point / models / search / platform integration points /
-  configuration / low-level building blocks) with doc comments on each
-  group.
-- Unit tests for the promoted search parser and the new cache decorator.
+
+- **`Kmep` facade** (`lib/src/kmep_client.dart`) — one class to
+  construct instead of wiring `ExtractionOrchestrator` +
+  `StreamResolver` + `CachedWatchPageMetaProvider` +
+  `BotGuardJsPoTokenProvider` by hand. `Kmep.withOnDevicePoToken(...)`
+  is the one-call setup for the common case.
+- **Search and shorts feed promoted into the library**
+  (`lib/src/search/search_client.dart`), typed as
+  `VideoSearchResult` / `SearchResultPage` / `ShortsFeedPage`.
+  This logic previously lived duplicated in the Vidora app's glue
+  code; it's YouTube-extraction logic, so it belongs here.
+- **`CachedWatchPageMetaProvider`** — TTL-caching decorator for
+  `WatchPageMetaProvider` so the watch page is fetched once per video
+  across orchestrator and PO token binding.
+- **`BotGuardJsPoTokenProvider.bindingFor`** — async alternative to
+  the synchronous `bindingResolver`, for bindings that come from the
+  network (e.g. `visitorData` from the watch page).
+- Curated public export surface in `lib/kmep.dart`, grouped by
+  purpose with doc comments.
+- Unit tests for the promoted search parser and the cache decorator;
+  Dart CI workflow (`.github/workflows/dart_ci.yml`).
 - Project branding (logo, cover) in `branding/`.
 
 ### Changed
-- `SearchResultPage.results` is now `List<VideoSearchResult>` (was
-  `List<dynamic>`).
-- **License switched from MIT to GPLv3** (see below).
 
-### License
+- `SearchResultPage.results` is now typed (see Breaking changes).
 
-Relicensed MIT → **GPL-3.0-or-later**, the same license as NewPipe.
-This project is the result of weeks of reverse-engineering work —
-on-device BotGuard PO token generation, multi-client InnerTube
-fallback, real `player.js` execution — and the copyleft license keeps
-it that way: anyone building on it must publish their changes under
-GPLv3 too. Taking this code, renaming it and shipping it as a
-closed-source "own" extractor is a copyright violation.
+## [0.1.0] — 2026-08-22
 
-### Known gaps (tracked, not yet implemented)
-- ~~No channel or playlist extraction~~ — **done in 0.3.0**.
-- ~~No comments support~~ — **done in 0.3.0**.
-- YouTube only — there is no NewPipe-style `StreamingService`
-  abstraction for other sites. Multi-site support would be a 1.0-scope
-  change, not a patch on top of this API.
-- ~~Package still named `kmep_proto`~~ — **renamed to `kmep` in
-  0.3.0** (pubspec, imports, harness folder). Publishing to pub.dev
-  is a deliberate separate step.
+Initial internal prototype ("kmep-proto") for the Vidora app — proof
+of the architecture on real traffic before any public API existed.
+Shipped with the on-device test harness (APK) and the full evidence
+trail in `docs/AGENT_HANDOFF.md`: visitor-data parity with yt-dlp,
+the VISIONOS client addition, live-verified extraction matrix, and
+the on-device BotGuard PO token proof (R1/R2/R3 experiments).
 
-### Breaking changes
-- **Package renamed: `kmep_proto` → `kmep`.** Update your
-  `pubspec.yaml` dependency and `import 'package:kmep/kmep.dart';`.
-  The on-device test harness folder renamed to `kmep_harness/` too.
+### Added
 
-## 0.1.0 — Internal prototype
+- InnerTube multi-client fallback (`ANDROID_VR`/`WEB`/`IOS`/
+  `WEB_SAFARI`/`TV`), client configs calibrated against live traffic.
+- `StreamResolver`: signature/`n` reversal via real `player.js`
+  execution in a pluggable `JsRuntime` (Node process runtime included;
+  WebView runtime in the Flutter integration package).
+- `BotGuardJsPoTokenProvider`: on-device BotGuard PO token generation
+  — no bgutil server.
+- `ExtractionOrchestrator` with fallback order, circuit-breaker-style
+  `RemoteConfig`, cache manager, watch-page metadata provider.
+- `NodeProcessJsRuntime`, diagnostic tools (`dart/tool/`), harness
+  APK project, Python emergency-fallback backend prototype
+  (`backend/`, unused by the library).
 
-Original state as validated against live traffic; see
-`docs/AGENT_HANDOFF.md` for the full evidence trail (success-rate
-methodology, on-device PO token proof, remaining risks).
+[Unreleased]: https://github.com/dipodev20/kmep/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/dipodev20/kmep/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/dipodev20/kmep/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/dipodev20/kmep/releases/tag/v0.1.0

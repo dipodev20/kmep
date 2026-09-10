@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="branding/cover.png" width="640" alt="KMEP — YouTube extraction for Dart" />
+  <img src="branding/cover.png" width="640" alt="KMEP — Dart YouTube Extractor, a stable alternative to NewPipe" />
 </p>
 
 <p align="center">
@@ -13,8 +13,7 @@
   <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.3.0-FF4F00?style=for-the-badge&logo=git&logoColor=white" alt="Version 0.3.0" /></a>
   <a href="https://www.dart.dev"><img src="https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart" /></a>
   <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" /></a>
-  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" /></a>
-  <a href="https://www.youtube.com"><img src="https://img.shields.io/badge/InnerTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube InnerTube" /></a>
+  <a href="https://github.com/dipodev20/kmep/stargazers"><img src="https://img.shields.io/github/stars/dipodev20/kmep?style=for-the-badge&logo=github&color=FFD700" alt="Stars" /></a>
 </p>
 
 <p align="center">
@@ -25,11 +24,14 @@
 
 <br />
 
-KMEP is a YouTube extraction library for Dart, written from scratch.
-It talks to the same InnerTube endpoints YouTube's own apps use —
+# KMEP: Dart YouTube Extractor — A Stable Alternative to NewPipe
+
+KMEP is a YouTube extraction library written in pure Dart, built as a
+stable alternative to NewPipeExtractor for Flutter and Dart apps. It
+talks to the same InnerTube endpoints YouTube's own apps use —
 multi-client fallback, real `player.js` execution for signatures,
-on-device BotGuard PO tokens — and wraps it all in a typed Dart API
-you can call from any Flutter or pure-Dart project.
+on-device BotGuard PO tokens — behind a typed Dart API, with no JVM,
+no Python runtime, and no backend server.
 
 The short version of why it exists: if you're building a Dart app and
 want YouTube data without a JVM dependency, a Python runtime, or your
@@ -101,6 +103,146 @@ Not covered (on purpose): other sites — there's no multi-service
 abstraction layer, YouTube's surface alone is enough work for one
 library.
 
+## Why not just use NewPipeExtractor?
+
+NewPipeExtractor is a great library — and if you're on the JVM, use it.
+KMEP exists because it isn't:
+
+- **NewPipeExtractor is JVM** (Java/Kotlin). In a Flutter app that
+  means shipping a JVM runtime or building platform bridges per OS —
+  the heaviest dependency an otherwise pure-Dart app can take.
+- **KMEP is a plain Dart dependency.** One `pubspec.yaml` line, one
+  import, no codegen, no platform channels of your own.
+- **On-device PO tokens, built-in.** KMEP runs the actual BotGuard
+  program on-device — no bgutil server, no third-party attestation
+  service. Nothing external to deploy, keep alive, or hide from users.
+- **Client matrix is runtime-tunable.** When YouTube breaks a client,
+  the fix is usually a config override fetched over the air
+  (`RemoteConfig`), not an app release.
+- **Complements, not competes:** KMEP's production router falls back
+  to NewPipeExtractor on failure — the two are designed to coexist.
+
+## How to use KMEP as a FreeTube alternative (building blocks)
+
+FreeTube and LibreTube are apps; KMEP is the engine you'd build one
+with. A minimal "browse + watch" Flutter app is a weekend of work:
+
+```dart
+// Search → results → channel page → playlist → comments: all typed.
+final results = await kmep.search('flutter tutorial');
+final shorts  = await kmep.shortsFeed(query: 'lofi');
+final channel = await kmep.getChannel('@flutterdev');
+final videos  = await kmep.getChannelVideos(channel.channelId);
+final playlist = await kmep.getPlaylist('PLjxrf9hq8sD5U0z-xY8ELwlJ71QusK16N');
+
+// The watch experience: full metadata + resolved, playable stream URLs.
+final video = await kmep.getVideo(videos.first.videoId);
+final best = video.streams
+    .where((s) => s.type == 'video')
+    .reduce((a, b) => (a.height ?? 0) >= (b.height ?? 0) ? a : b);
+// hand best.url to your player (video_player, media_kit, exoplayer…)
+```
+
+If you want the ready-made app instead: NewPipe, LibreTube and
+FreeTube exist and are excellent. If you want to build *your own* —
+with your own UI, caching, and offline behavior — that's exactly the
+job KMEP was extracted for.
+
+## Comparison with yt-dlp, NewPipe, and LibreTube
+
+| | **KMEP** | NewPipeExtractor | yt-dlp | NewPipe / LibreTube / FreeTube |
+|---|---|---|---|---|
+| What it is | Dart library | JVM library | Python CLI/library | End-user apps |
+| Language | **Dart** | Java/Kotlin | Python | Kotlin/JS/Vue |
+| Runs inside a Flutter app | **natively, one dependency** | via JVM/bridges | via server or Python runtime | n/a |
+| PO token strategy | **on-device BotGuard, zero servers** | not built-in | external bgutil server/plugin | per-app |
+| Client fallback when YouTube changes | 5 clients + **runtime RemoteConfig** | per-release fixes | per-release fixes | per-release fixes |
+| Search / channels / playlists / comments | **typed Dart API** | extractor objects | CLI/JSON | built-in UI |
+| Video quality | up to 4K, all 27 formats | up to 4K (client-dependent) | all formats | client-dependent |
+| Live streams / HLS | yes | yes | yes | yes |
+| Production track record | 4–5 weeks daily-driver app, 98% (49/50) | battle-tested for years | industry standard | battle-tested for years |
+| License | GPL-3.0-or-later | GPL-3.0 | Unlicense | various (mostly GPL) |
+
+The fair reading of that table: for JVM projects NewPipeExtractor is
+the safer bet, and for servers yt-dlp is unbeatable. KMEP's niche is
+**Flutter/Dart apps that want the extraction engine in-process** —
+that combination had no production-tested option before this.
+
+## How to install and use KMEP
+
+**1. Depend on it** (pub.dev publishing is planned; today it's git):
+
+```yaml
+dependencies:
+  kmep:
+    git:
+      url: https://github.com/dipodev20/kmep
+      path: dart
+```
+
+**2. Provide a JS runtime** (the one platform-specific piece — see
+[Platform integration](#platform-integration) below) and an HTTP
+fetcher, then construct the facade:
+
+```dart
+import 'package:kmep/kmep.dart';
+
+final kmep = Kmep.withOnDevicePoToken(
+  jsRuntime: WebViewJsRuntime(),        // player.js execution
+  potJsRuntime: WebViewJsRuntime(),     // separate JS context for BotGuard
+  fetchText: myHttpGetText,
+);
+```
+
+**3. Call it.** Every method returns typed Dart models — no JSON
+munging:
+
+| Call | Returns |
+|---|---|
+| `getVideo(id)` | `VideoInfo` + playable `KMEPStream` list |
+| `search(q)` / `shortsFeed(q)` | typed, paginated results |
+| `getChannel(idOrHandle)` | `ChannelInfo` (avatar, banner, subs, tabs) |
+| `getChannelVideos(id)` | paginated video cards |
+| `getPlaylist(idOrUrl)` | `PlaylistInfo` + first page |
+| `getComments(id, sort: top/newest)` | threads, replies, pinned/hearted |
+| `getCommentReplies(token)` | thread replies, paginated |
+
+Full runnable example: [`dart/example/example.dart`](dart/example/example.dart).
+
+## Platform integration
+
+KMEP needs a `JsRuntime` from you — something that can execute a real
+`player.js`. Deliberately not bundled, because the right answer
+differs per platform:
+
+- **Flutter 📱** — `WebViewJsRuntime` from [`flutter_integration/`](flutter_integration)
+  in this repo. This is the production-tested one; QuickJS-based
+  runtimes choke on `player.js` intermittently.
+- **Server / CLI 🖥️** — `NodeProcessJsRuntime` (in `dart/lib/src/runtimes/`)
+  shells out to a local `node` binary.
+- **Anything else 🔧** — implement two methods (`bootstrap`, `call`)
+  and you're in.
+
+Full wiring lives in `dart/lib/src/kmep_client.dart` doc comments and
+`dart/example/example.dart`.
+
+## Performance, measured
+
+Numbers from a mid-range Android device, residential IP, same
+`android_vr` client for both engines, September 2026:
+
+| | yt-dlp 2026.08 | KMEP 0.3 |
+|---|---|---|
+| Cold: process start + one video | ~11.8 s | ~7–9 s (incl. player.js bootstrap) |
+| Same video again | — | **~1 ms** (built-in cache) |
+| Formats returned | 4 (with `best`) | 27 (everything YouTube serves) |
+| Runs inside a Flutter app | no (process/server) | yes (a Dart object) |
+
+Reproduce it yourself: `dart run tool/bench_kmep.dart` in this repo,
+and the matching yt-dlp command is documented in the same file. Both
+engines fail on the same bot-checked videos on this IP — that part is
+YouTube, not us.
+
 ## Honest limitations
 
 Read this before betting a product on it:
@@ -134,52 +276,6 @@ than any marketing prose.
 
 [vidora]: https://github.com/dipodev20
 
-## Performance, measured
-
-Numbers from a mid-range Android device, residential IP, same
-`android_vr` client for both engines, September 2026:
-
-| | yt-dlp 2026.08 | KMEP 0.3 |
-|---|---|---|
-| Cold: process start + one video | ~11.8 s | ~7–9 s (incl. player.js bootstrap) |
-| Same video again | — | **~1 ms** (built-in cache) |
-| Formats returned | 4 (with `best`) | 27 (everything YouTube serves) |
-| Runs inside a Flutter app | no (process/server) | yes (a Dart object) |
-
-Reproduce it yourself: `dart run tool/bench_kmep.dart` in this repo,
-and the matching yt-dlp command is documented in the same file. Both
-engines fail on the same bot-checked videos on this IP — that part is
-YouTube, not us.
-
-## Install
-
-Not on pub.dev yet; depend on it via git:
-
-```yaml
-dependencies:
-  kmep:
-    git:
-      url: https://github.com/dipodev20/kmep
-      path: dart
-```
-
-## Platform integration
-
-KMEP needs a `JsRuntime` from you — something that can execute a real
-`player.js`. Deliberately not bundled, because the right answer
-differs per platform:
-
-- **Flutter 📱** — `WebViewJsRuntime` from [`flutter_integration/`](flutter_integration)
-  in this repo. This is the production-tested one; QuickJS-based
-  runtimes choke on `player.js` intermittently.
-- **Server / CLI 🖥️** — `NodeProcessJsRuntime` (in `dart/lib/src/runtimes/`)
-  shells out to a local `node` binary.
-- **Anything else 🔧** — implement two methods (`bootstrap`, `call`)
-  and you're in.
-
-Full wiring lives in `dart/lib/src/kmep_client.dart` doc comments and
-`dart/example/example.dart`.
-
 ## FAQ
 
 **Why not just use yt-dlp?** Use it — it's magnificent, and its client
@@ -203,11 +299,6 @@ when every on-device client fails (think hostile IP, no POT). The
 library never imports it; it exists because it documented the survival
 path during the prototype phase. One Python file — delete it and
 nothing changes.
-
-**Why not NewPipeExtractor?** It's JVM; KMEP is pure Dart for apps
-that don't want a JVM dependency. They're complements — this
-project's own production router falls back to NewPipeExtractor when
-KMEP fails.
 
 ## Legal
 
